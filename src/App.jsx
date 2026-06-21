@@ -33,6 +33,7 @@ import {
   isValidElement,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import ReactMarkdown from 'react-markdown'
@@ -52,6 +53,11 @@ import './App.css'
 import dreamBgDay from './assets/dream-bg-day.webp'
 import dreamBgSunset from './assets/dream-bg-sunset.webp'
 import lazyGoat from './assets/lazy-goat.jpg'
+import {
+  articleTemplate,
+  publishChecklist,
+  publishFlow,
+} from './content/guide'
 import { categories, posts } from './content/posts'
 import {
   createHeadingIdFactory,
@@ -128,11 +134,14 @@ const momentGroups = [
         mood: '懒洋洋',
         text: '今天先把首页收拾得像一个真正可以住进去的小窝，再慢慢把内容填满。',
         likes: 14,
+        comments: 3,
+        image: dreamBgDay,
       },
       {
         mood: '奶油云',
         text: '夜里抱着零食听歌的时候，最适合决定博客的新配色和背景。',
         likes: 8,
+        comments: 2,
       },
     ],
   },
@@ -143,6 +152,8 @@ const momentGroups = [
         mood: '草地风',
         text: '有时候页面先漂亮起来，写作的欲望也会跟着回来。',
         likes: 11,
+        comments: 1,
+        image: dreamBgSunset,
       },
     ],
   },
@@ -335,6 +346,7 @@ export default function App() {
           <Route path="archives" element={<ArchivesPage />} />
           <Route path="music" element={<MusicPage />} />
           <Route path="about" element={<AboutPage />} />
+          <Route path="publish" element={<PublishGuidePage />} />
           <Route path="post/:slug" element={<ArticlePage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
@@ -635,9 +647,48 @@ function DreamBackground({ image, blur, effectsEnabled }) {
   )
 }
 
+function updateTiltSurface(event) {
+  const card = event.currentTarget
+  const bounds = card.getBoundingClientRect()
+  const ratioX = (event.clientX - bounds.left) / bounds.width
+  const ratioY = (event.clientY - bounds.top) / bounds.height
+  const rotateY = (ratioX - 0.5) * 10
+  const rotateX = (0.5 - ratioY) * 8
+
+  card.style.setProperty('--pointer-x', `${(ratioX * 100).toFixed(2)}%`)
+  card.style.setProperty('--pointer-y', `${(ratioY * 100).toFixed(2)}%`)
+  card.style.setProperty('--rotate-x', `${rotateX.toFixed(2)}deg`)
+  card.style.setProperty('--rotate-y', `${rotateY.toFixed(2)}deg`)
+  card.style.setProperty('--sheen-opacity', '1')
+}
+
+function resetTiltSurface(event) {
+  const card = event.currentTarget
+  card.style.setProperty('--pointer-x', '50%')
+  card.style.setProperty('--pointer-y', '50%')
+  card.style.setProperty('--rotate-x', '0deg')
+  card.style.setProperty('--rotate-y', '0deg')
+  card.style.setProperty('--sheen-opacity', '0')
+}
+
 function HomePage() {
   const articleFeed = useMemo(() => buildArticleFeed(), [])
   const [searchValue, setSearchValue] = useState('')
+  const quickResults = useMemo(() => {
+    const keyword = searchValue.trim().toLowerCase()
+    if (!keyword) {
+      return []
+    }
+
+    return articleFeed
+      .filter((article) =>
+        [article.title, article.excerpt, article.category]
+          .join(' ')
+          .toLowerCase()
+          .includes(keyword),
+      )
+      .slice(0, 3)
+  }, [articleFeed, searchValue])
 
   return (
     <div className="dashboard">
@@ -656,6 +707,20 @@ function HomePage() {
             placeholder="输入暗号进入懒羊羊的小窝..."
           />
         </label>
+        {quickResults.length > 0 && (
+          <div className="dashboard__suggestions">
+            {quickResults.map((article) => (
+              <Link
+                key={article.title}
+                className="dashboard__suggestion"
+                to={article.previewOnly ? '/articles' : `/post/${article.slug}`}
+              >
+                <strong>{article.title}</strong>
+                <span>{article.category}</span>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="dashboard__grid">
@@ -822,12 +887,9 @@ function ArticlesPage() {
           <motion.article
             key={article.title}
             className="article-cover-card glass-panel"
-            whileHover={
-              reduceMotion
-                ? undefined
-                : { y: -8, rotateX: 2, rotateY: -3, scale: 1.01 }
-            }
             transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+            onPointerMove={reduceMotion ? undefined : updateTiltSurface}
+            onPointerLeave={reduceMotion ? undefined : resetTiltSurface}
           >
             <div
               className="article-cover-card__cover"
@@ -879,10 +941,18 @@ function MomentsPage() {
                   transition={{ type: 'spring', stiffness: 240, damping: 18 }}
                 >
                   <div className="moment-card__mood">{item.mood}</div>
+                  {item.image && (
+                    <div
+                      className="moment-card__image"
+                      style={{ backgroundImage: `url(${item.image})` }}
+                    />
+                  )}
                   <p>{item.text}</p>
                   <div className="moment-card__footer">
                     <Heart size={16} weight="duotone" />
                     <span>{item.likes}</span>
+                    <ChatsCircle size={16} weight="duotone" />
+                    <span>{item.comments}</span>
                   </div>
                 </motion.article>
               ))}
@@ -993,7 +1063,41 @@ function FriendsPage() {
 
 function PhotosPage() {
   const [selectedAlbum, setSelectedAlbum] = useState(null)
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
   const reduceMotion = useReducedMotion()
+
+  const activePhoto =
+    selectedAlbum?.images[selectedPhotoIndex] ?? selectedAlbum?.images[0] ?? ''
+
+  function openAlbum(album) {
+    setSelectedAlbum(album)
+    setSelectedPhotoIndex(0)
+  }
+
+  function closeAlbum() {
+    setSelectedAlbum(null)
+    setSelectedPhotoIndex(0)
+  }
+
+  function showNextPhoto() {
+    if (!selectedAlbum) {
+      return
+    }
+
+    setSelectedPhotoIndex((currentIndex) => (
+      currentIndex + 1
+    ) % selectedAlbum.images.length)
+  }
+
+  function showPreviousPhoto() {
+    if (!selectedAlbum) {
+      return
+    }
+
+    setSelectedPhotoIndex((currentIndex) => (
+      currentIndex - 1 + selectedAlbum.images.length
+    ) % selectedAlbum.images.length)
+  }
 
   return (
     <section className="page-board">
@@ -1006,7 +1110,7 @@ function PhotosPage() {
             type="button"
             whileHover={reduceMotion ? undefined : { y: -8, scale: 1.01 }}
             transition={{ type: 'spring', stiffness: 240, damping: 18 }}
-            onClick={() => setSelectedAlbum(album)}
+            onClick={() => openAlbum(album)}
           >
             <div className="album-card__stack">
               {album.stack.map((image, index) => (
@@ -1037,7 +1141,7 @@ function PhotosPage() {
             <button
               className="lightbox__backdrop"
               type="button"
-              onClick={() => setSelectedAlbum(null)}
+              onClick={closeAlbum}
             />
             <motion.div
               className="lightbox__panel glass-panel"
@@ -1050,15 +1154,32 @@ function PhotosPage() {
                   <p className="soft-eyebrow">Album</p>
                   <h3>{selectedAlbum.title}</h3>
                 </div>
-                <button type="button" onClick={() => setSelectedAlbum(null)}>
+                <button type="button" onClick={closeAlbum}>
                   关闭
                 </button>
               </div>
+              <div className="lightbox__viewer">
+                <button className="lightbox__nav" type="button" onClick={showPreviousPhoto}>
+                  上一张
+                </button>
+                <div
+                  className="lightbox__hero"
+                  style={{ backgroundImage: `url(${activePhoto})` }}
+                />
+                <button className="lightbox__nav" type="button" onClick={showNextPhoto}>
+                  下一张
+                </button>
+              </div>
+              <div className="lightbox__count">
+                第 {selectedPhotoIndex + 1} 张 / 共 {selectedAlbum.images.length} 张
+              </div>
               <div className="lightbox__grid">
                 {selectedAlbum.images.map((image, index) => (
-                  <div
+                  <button
                     key={index}
-                    className="lightbox__image"
+                    className={`lightbox__image${selectedPhotoIndex === index ? ' active' : ''}`}
+                    type="button"
+                    onClick={() => setSelectedPhotoIndex(index)}
                     style={{ backgroundImage: `url(${image})` }}
                   />
                 ))}
@@ -1075,21 +1196,7 @@ function ArchivesPage() {
   return (
     <section className="page-board">
       <PageHeading title="归档" subtitle="在草地上的时间河流里翻看慢慢积累的记忆" />
-      <div className="archive-river">
-        <div className="archive-river__line" />
-        <div className="archive-river__track">
-          {archiveNodes.map((node) => (
-            <div className={`archive-node ${node.align}`} key={node.year}>
-              <div className="archive-node__dot" />
-              <article className="glass-panel archive-node__card">
-                <span>{node.year}</span>
-                <strong>{node.title}</strong>
-                <p>{node.text}</p>
-              </article>
-            </div>
-          ))}
-        </div>
-      </div>
+      <ArchiveRiverBoard />
     </section>
   )
 }
@@ -1142,8 +1249,57 @@ function AboutPage() {
           <p>
             首页、文章、说说、照片墙、归档、音乐和设置面板都已经准备好。等第一篇真实文章上线以后，这个页面会更完整。
           </p>
+          <Link className="action-button action-button--secondary" to="/publish">
+            去看发文方式
+          </Link>
         </article>
       </div>
+    </section>
+  )
+}
+
+function PublishGuidePage() {
+  return (
+    <section className="page-board">
+      <PageHeading
+        title="发布指南"
+        subtitle="改仓库内容后自动部署，这个小窝会自己更新到 GitHub Pages"
+      />
+      <div className="guide-grid">
+        {publishFlow.map((step) => (
+          <article className="glass-panel guide-step" key={step.title}>
+            <p className="soft-eyebrow">Auto Deploy Flow</p>
+            <h3>{step.title}</h3>
+            <p>{step.text}</p>
+          </article>
+        ))}
+      </div>
+
+      <article className="glass-panel publish-panel">
+        <div className="panel-headline">
+          <div>
+            <p className="soft-eyebrow">Checklist</p>
+            <h3>发文前的小提醒</h3>
+          </div>
+        </div>
+        <div className="favorite-cloud publish-panel__chips">
+          {publishChecklist.map((item) => (
+            <span key={item}>{item}</span>
+          ))}
+        </div>
+      </article>
+
+      <article className="glass-panel publish-panel">
+        <div className="panel-headline">
+          <div>
+            <p className="soft-eyebrow">Markdown Template</p>
+            <h3>新文章模板</h3>
+          </div>
+        </div>
+        <pre className="code-panel code-panel--block">
+          <code>{articleTemplate}</code>
+        </pre>
+      </article>
     </section>
   )
 }
@@ -1293,6 +1449,90 @@ function NotFoundPage() {
         </div>
       </article>
     </section>
+  )
+}
+
+function ArchiveRiverBoard() {
+  const viewportRef = useRef(null)
+  const dragStateRef = useRef({
+    active: false,
+    startX: 0,
+    scrollLeft: 0,
+  })
+
+  function handlePointerDown(event) {
+    const viewport = viewportRef.current
+    if (!viewport) {
+      return
+    }
+
+    dragStateRef.current = {
+      active: true,
+      startX: event.clientX,
+      scrollLeft: viewport.scrollLeft,
+    }
+    viewport.dataset.dragging = 'true'
+    viewport.setPointerCapture?.(event.pointerId)
+  }
+
+  function handlePointerMove(event) {
+    const viewport = viewportRef.current
+    if (!viewport || !dragStateRef.current.active) {
+      return
+    }
+
+    const deltaX = event.clientX - dragStateRef.current.startX
+    viewport.scrollLeft = dragStateRef.current.scrollLeft - deltaX
+  }
+
+  function endDrag(event) {
+    const viewport = viewportRef.current
+    if (!viewport) {
+      return
+    }
+
+    dragStateRef.current.active = false
+    viewport.dataset.dragging = 'false'
+    viewport.releasePointerCapture?.(event.pointerId)
+  }
+
+  function handleWheel(event) {
+    const viewport = viewportRef.current
+    if (!viewport || Math.abs(event.deltaY) <= Math.abs(event.deltaX)) {
+      return
+    }
+
+    viewport.scrollLeft += event.deltaY
+  }
+
+  return (
+    <div className="archive-river">
+      <div className="archive-river__hint">按住拖动时间河流</div>
+      <div
+        ref={viewportRef}
+        className="archive-river__viewport"
+        data-dragging="false"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onWheel={handleWheel}
+      >
+        <div className="archive-river__line" />
+        <div className="archive-river__track">
+          {archiveNodes.map((node) => (
+            <div className={`archive-node ${node.align}`} key={node.year}>
+              <div className="archive-node__dot" />
+              <article className="glass-panel archive-node__card">
+                <span>{node.year}</span>
+                <strong>{node.title}</strong>
+                <p>{node.text}</p>
+              </article>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }
 
