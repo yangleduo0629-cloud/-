@@ -1289,6 +1289,12 @@
   gap: 12px;
 }
 
+.guestbook-wall-panel__hint {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.72;
+}
+
 .guestbook-wall-panel__chips {
   margin-top: -2px;
 }

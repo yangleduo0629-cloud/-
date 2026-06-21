@@ -164,9 +164,8 @@ const contentExportLinks = [
 const publicGuestbookConfig = {
   repo: 'yangleduo0629-cloud/-',
   issueTerm: 'lazy-goat-guestbook',
-  label: 'guestbook',
   repoUrl: 'https://github.com/yangleduo0629-cloud/-',
-  issuesUrl: 'https://github.com/yangleduo0629-cloud/-/issues?q=is%3Aissue+label%3Aguestbook',
+  issuesUrl: 'https://github.com/yangleduo0629-cloud/-/issues?q=is%3Aissue+lazy-goat-guestbook',
 }
 
 function articleMatchesKeyword(article, keyword) {
@@ -311,7 +310,6 @@ function PublicGuestbookWall() {
     script.crossOrigin = 'anonymous'
     script.setAttribute('repo', publicGuestbookConfig.repo)
     script.setAttribute('issue-term', publicGuestbookConfig.issueTerm)
-    script.setAttribute('label', publicGuestbookConfig.label)
     script.setAttribute('theme', commentTheme)
     container.appendChild(script)
 
@@ -335,10 +333,13 @@ function PublicGuestbookPreview() {
 
     async function loadGuestbookPreview() {
       try {
+        const searchQuery = [
+          `repo:${publicGuestbookConfig.repo}`,
+          'is:issue',
+          `"${publicGuestbookConfig.issueTerm}"`,
+        ].join(' ')
         const issuesResponse = await fetch(
-          `https://api.github.com/repos/${publicGuestbookConfig.repo}/issues?labels=${encodeURIComponent(
-            publicGuestbookConfig.label,
-          )}&state=all&sort=updated&direction=desc&per_page=5`,
+          `https://api.github.com/search/issues?q=${encodeURIComponent(searchQuery)}`,
           {
             signal: abortController.signal,
             headers: {
@@ -351,7 +352,8 @@ function PublicGuestbookPreview() {
           throw new Error(`HTTP ${issuesResponse.status}`)
         }
 
-        const issueList = await issuesResponse.json()
+        const issueSearchResult = await issuesResponse.json()
+        const issueList = Array.isArray(issueSearchResult.items) ? issueSearchResult.items : []
         const guestbookIssue = issueList.find((issue) => !issue.pull_request)
 
         if (!guestbookIssue) {
@@ -1681,6 +1683,9 @@ function GuestbookPage() {
           <span>支持回复</span>
           <span>适合长期交流</span>
         </div>
+        <p className="guestbook-wall-panel__hint">
+          第一次有人用 GitHub 留言时，Utterances 会自动在仓库里创建对应的留言板 issue，不需要你手动先建好。
+        </p>
         <div className="guestbook-wall-panel__actions">
           <a className="action-button action-button--secondary" href={publicGuestbookConfig.issuesUrl} rel="noreferrer" target="_blank">
             GitHub 留言入口
