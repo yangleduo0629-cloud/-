@@ -13,7 +13,7 @@ export const publishFlow = [
   },
   {
     title: '4. 提交并推送',
-    text: 'git add、commit、push 之后，GitHub Actions 会自动重新构建并发布 Pages。',
+    text: 'git add、commit、push 之后，GitHub Actions 会自动重新构建并发布 Pages，同时更新 RSS、站点地图和文章摘要索引。',
   },
 ]
 
@@ -21,6 +21,7 @@ export const publishChecklist = [
   'slug 建议只用小写字母、数字和连字符，避免空格。',
   'frontmatter 的日期使用 YYYY-MM-DD，排序会更稳定。',
   '可以选填 updatedAt、series、draft、showToc 这些字段，分别表示更新时间、系列名、是否草稿和是否显示目录。',
+  '构建时会自动生成 feed.xml、sitemap.xml 和 content-index.json，不需要手动维护。',
   '封面图如果放本地，直接写文件名，比如 lazy-goat.jpg。',
   '正文插图可以写 `![说明](文件名.png)`，图片放到 src/assets 或文章同目录都能识别。',
   '尽量使用 ## 和 ### 分层，文章页会自动生成目录。',
