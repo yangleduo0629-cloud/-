@@ -166,6 +166,7 @@ const publicGuestbookConfig = {
   issueTerm: 'lazy-goat-guestbook',
   label: 'guestbook',
   repoUrl: 'https://github.com/yangleduo0629-cloud/-',
+  issuesUrl: 'https://github.com/yangleduo0629-cloud/-/issues?q=is%3Aissue+label%3Aguestbook',
 }
 
 function articleMatchesKeyword(article, keyword) {
@@ -186,6 +187,84 @@ function articleMatchesKeyword(article, keyword) {
     .toLowerCase()
 
   return searchPool.includes(keyword)
+}
+
+function stripMarkdownText(markdown) {
+  return String(markdown)
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/!\[[^\]]*]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]+)]\([^)]*\)/g, '$1')
+    .replace(/^>\s?/gm, '')
+    .replace(/[#*_~]/g, ' ')
+    .replace(/\r?\n+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function truncateText(text, maxLength = 110) {
+  const normalizedText = stripMarkdownText(text)
+  if (normalizedText.length <= maxLength) {
+    return normalizedText
+  }
+
+  return `${normalizedText.slice(0, maxLength).trim()}...`
+}
+
+function formatGuestbookTime(dateString) {
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(dateString))
+}
+
+function buildHomeActivityFeed(articleFeed) {
+  const activities = []
+
+  if (articleFeed[0]) {
+    activities.push({
+      type: '新文章',
+      title: articleFeed[0].title,
+      desc: articleFeed[0].excerpt || '新的学习记录已经落进文章区了。',
+      meta: `${formatDate(articleFeed[0].publishedAt)} · ${articleFeed[0].category}`,
+      to: `/post/${articleFeed[0].slug}`,
+    })
+  }
+
+  momentGroups.slice(0, 2).forEach((group) => {
+    const firstMoment = group.items[0]
+    if (!firstMoment) {
+      return
+    }
+
+    activities.push({
+      type: '新说说',
+      title: firstMoment.mood,
+      desc: firstMoment.text,
+      meta: group.date,
+      to: '/moments',
+    })
+  })
+
+  activities.push({
+    type: '留言板',
+    title: '公开留言墙已经开启',
+    desc: '访客可以直接登录 GitHub 留言、回复和慢慢继续聊。',
+    meta: '欢迎来打招呼',
+    to: '/guestbook',
+  })
+
+  activities.push({
+    type: '自动部署',
+    title: '改仓库内容后会自动更新',
+    desc: 'Markdown、图片、RSS 和内容索引都会跟着构建一起刷新。',
+    meta: 'GitHub Pages',
+    to: '/publish',
+  })
+
+  return activities.slice(0, 4)
 }
 
 function resolveCommentTheme() {
@@ -242,6 +321,157 @@ function PublicGuestbookWall() {
   }, [commentTheme])
 
   return <div className="guestbook-comment-wall" ref={containerRef} />
+}
+
+function PublicGuestbookPreview() {
+  const [previewState, setPreviewState] = useState({
+    status: 'loading',
+    comments: [],
+    issueUrl: publicGuestbookConfig.issuesUrl,
+  })
+
+  useEffect(() => {
+    const abortController = new AbortController()
+
+    async function loadGuestbookPreview() {
+      try {
+        const issuesResponse = await fetch(
+          `https://api.github.com/repos/${publicGuestbookConfig.repo}/issues?labels=${encodeURIComponent(
+            publicGuestbookConfig.label,
+          )}&state=all&sort=updated&direction=desc&per_page=5`,
+          {
+            signal: abortController.signal,
+            headers: {
+              Accept: 'application/vnd.github+json',
+            },
+          },
+        )
+
+        if (!issuesResponse.ok) {
+          throw new Error(`HTTP ${issuesResponse.status}`)
+        }
+
+        const issueList = await issuesResponse.json()
+        const guestbookIssue = issueList.find((issue) => !issue.pull_request)
+
+        if (!guestbookIssue) {
+          setPreviewState({
+            status: 'empty',
+            comments: [],
+            issueUrl: publicGuestbookConfig.issuesUrl,
+          })
+          return
+        }
+
+        const commentsResponse = await fetch(`${guestbookIssue.comments_url}?per_page=3`, {
+          signal: abortController.signal,
+          headers: {
+            Accept: 'application/vnd.github+json',
+          },
+        })
+
+        if (!commentsResponse.ok) {
+          throw new Error(`HTTP ${commentsResponse.status}`)
+        }
+
+        const commentList = await commentsResponse.json()
+
+        if (!Array.isArray(commentList) || commentList.length === 0) {
+          setPreviewState({
+            status: 'empty',
+            comments: [],
+            issueUrl: guestbookIssue.html_url,
+          })
+          return
+        }
+
+        setPreviewState({
+          status: 'ready',
+          issueUrl: guestbookIssue.html_url,
+          comments: commentList.slice(0, 3).map((comment) => ({
+            id: comment.id,
+            author: comment.user?.login || '草地访客',
+            avatar: comment.user?.avatar_url || lazyGoat,
+            url: comment.html_url,
+            createdAt: comment.created_at,
+            body: truncateText(comment.body || '来访者留下了一条暖乎乎的小纸条。', 120),
+          })),
+        })
+      } catch (error) {
+        if (abortController.signal.aborted) {
+          return
+        }
+
+        console.error('公开留言预览加载失败:', error)
+        setPreviewState({
+          status: 'error',
+          comments: [],
+          issueUrl: publicGuestbookConfig.issuesUrl,
+        })
+      }
+    }
+
+    void loadGuestbookPreview()
+
+    return () => {
+      abortController.abort()
+    }
+  }, [])
+
+  return (
+    <section className="guestbook-preview">
+      <div className="panel-headline">
+        <div>
+          <p className="soft-eyebrow">公开留言预览</p>
+          <h3>最近有人在这里聊什么</h3>
+        </div>
+        <a href={previewState.issueUrl} rel="noreferrer" target="_blank">
+          去看完整留言
+        </a>
+      </div>
+
+      {previewState.status === 'loading' && (
+        <div className="guestbook-comment-status guestbook-comment-status--loading">
+          正在同步最近的公开留言...
+        </div>
+      )}
+
+      {previewState.status === 'error' && (
+        <div className="guestbook-comment-status guestbook-comment-status--error">
+          公开留言预览暂时没有拉取成功，但留言墙本身还能用。要是上面的评论区没显示，也可以直接去 GitHub Issues 留言。
+        </div>
+      )}
+
+      {previewState.status === 'empty' && (
+        <div className="guestbook-comment-status">
+          公开留言墙刚刚开张，第一个留言会先出现在这里。你也可以先去下面的私信表单留一句话。
+        </div>
+      )}
+
+      {previewState.status === 'ready' && (
+        <div className="guestbook-preview__list">
+          {previewState.comments.map((comment) => (
+            <a
+              className="guestbook-preview__item"
+              href={comment.url}
+              key={comment.id}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <img src={comment.avatar} alt={`${comment.author} 的头像`} />
+              <div>
+                <div className="guestbook-preview__meta">
+                  <strong>{comment.author}</strong>
+                  <span>{formatGuestbookTime(comment.createdAt)}</span>
+                </div>
+                <p>{comment.body}</p>
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
+    </section>
+  )
 }
 
 function readStoredTheme() {
@@ -727,6 +957,37 @@ function resetTiltSurface(event) {
 function HomePage() {
   const articleFeed = useMemo(() => buildArticleFeed(), [])
   const [searchValue, setSearchValue] = useState('')
+  const activityFeed = useMemo(() => buildHomeActivityFeed(articleFeed), [articleFeed])
+  const dashboardRoutes = useMemo(
+    () => [
+      {
+        title: '从文章开始',
+        desc: '按分类、标签和年份翻一翻学习记录。',
+        to: '/articles',
+        icon: MagnifyingGlass,
+      },
+      {
+        title: '来留言交流',
+        desc: '公开留言墙和悄悄小纸条都已经准备好了。',
+        to: '/guestbook',
+        icon: ChatsCircle,
+      },
+      {
+        title: '看发文方式',
+        desc: '改仓库内容后自动部署，适合慢慢积累内容。',
+        to: '/publish',
+        icon: Code,
+      },
+      {
+        title: '订阅更新',
+        desc: '用 RSS 跟着小窝一起同步最近文章。',
+        href: contentExportLinks[0].href,
+        external: true,
+        icon: Waveform,
+      },
+    ],
+    [],
+  )
   const quickResults = useMemo(() => {
     const keyword = searchValue.trim().toLowerCase()
     if (!keyword) {
@@ -913,6 +1174,78 @@ function HomePage() {
             <span><FlowerLotus size={16} weight="fill" /> 草地治愈中</span>
             <span><Bell size={16} weight="fill" /> 铃铛静静响</span>
             <span><Cloud size={16} weight="fill" /> 云朵抱枕模式</span>
+          </div>
+        </motion.article>
+
+        <motion.article
+          className="glass-panel dashboard__activity-panel"
+          whileHover={{ y: -6 }}
+          transition={{ type: 'spring', stiffness: 240, damping: 20 }}
+        >
+          <div className="panel-headline">
+            <div>
+              <p className="soft-eyebrow">最近更新</p>
+              <h3>小窝这两天在忙什么</h3>
+            </div>
+            <Link to="/archives">去看归档</Link>
+          </div>
+          <div className="dashboard__activity-list">
+            {activityFeed.map((activity) => (
+              <Link className="dashboard__activity-item" key={activity.title} to={activity.to}>
+                <div className="dashboard__activity-meta">
+                  <span>{activity.type}</span>
+                  <strong>{activity.meta}</strong>
+                </div>
+                <h4>{activity.title}</h4>
+                <p>{activity.desc}</p>
+              </Link>
+            ))}
+          </div>
+        </motion.article>
+
+        <motion.article
+          className="glass-panel dashboard__path-panel"
+          whileHover={{ y: -6 }}
+          transition={{ type: 'spring', stiffness: 240, damping: 20 }}
+        >
+          <div className="panel-headline">
+            <div>
+              <p className="soft-eyebrow">学习入口</p>
+              <h3>第一次来可以从这里开始</h3>
+            </div>
+          </div>
+          <div className="dashboard__path-list">
+            {dashboardRoutes.map((route) => {
+              const Icon = route.icon
+
+              if (route.external) {
+                return (
+                  <a
+                    className="dashboard__path-link"
+                    href={route.href}
+                    key={route.title}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    <Icon size={18} weight="duotone" />
+                    <div>
+                      <strong>{route.title}</strong>
+                      <p>{route.desc}</p>
+                    </div>
+                  </a>
+                )
+              }
+
+              return (
+                <Link className="dashboard__path-link" key={route.title} to={route.to}>
+                  <Icon size={18} weight="duotone" />
+                  <div>
+                    <strong>{route.title}</strong>
+                    <p>{route.desc}</p>
+                  </div>
+                </Link>
+              )
+            })}
           </div>
         </motion.article>
 
@@ -1348,7 +1681,16 @@ function GuestbookPage() {
           <span>支持回复</span>
           <span>适合长期交流</span>
         </div>
+        <div className="guestbook-wall-panel__actions">
+          <a className="action-button action-button--secondary" href={publicGuestbookConfig.issuesUrl} rel="noreferrer" target="_blank">
+            GitHub 留言入口
+          </a>
+          <Link className="action-button action-button--secondary" to="/publish">
+            想一起写点东西
+          </Link>
+        </div>
         <PublicGuestbookWall />
+        <PublicGuestbookPreview />
       </motion.article>
       <div className="guestbook-grid">
         <motion.article
