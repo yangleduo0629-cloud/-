@@ -413,6 +413,7 @@ function SiteLayout() {
         blur={backgroundBlur}
         effectsEnabled={effectsEnabled}
       />
+      <SoftCursorEffects enabled={effectsEnabled} reduceMotion={reduceMotion} />
 
       <AnimatePresence>
         {welcomeVisible && (
@@ -528,7 +529,7 @@ function SiteLayout() {
           >
             <div className="settings-panel__header">
               <div>
-                <p className="soft-eyebrow">Dream Settings</p>
+                <p className="soft-eyebrow">小窝偏好</p>
                 <h2>小窝设置</h2>
               </div>
               <button
@@ -575,7 +576,7 @@ function SiteLayout() {
             <div className="settings-panel__group settings-panel__group--toggle">
               <div>
                 <span className="settings-panel__label">鼠标特效</span>
-                <p>云朵漂浮和糖屑粒子</p>
+                <p>柔软光晕和点击糖屑</p>
               </div>
               <button
                 className={`toggle-chip${effectsEnabled ? ' active' : ''}`}
@@ -647,6 +648,96 @@ function DreamBackground({ image, blur, effectsEnabled }) {
   )
 }
 
+function SoftCursorEffects({ enabled, reduceMotion }) {
+  const layerRef = useRef(null)
+  const orbRef = useRef(null)
+  const auraRef = useRef(null)
+
+  useEffect(() => {
+    if (!enabled || reduceMotion) {
+      return undefined
+    }
+
+    if (!window.matchMedia('(pointer: fine)').matches) {
+      return undefined
+    }
+
+    const layer = layerRef.current
+    const orb = orbRef.current
+    const aura = auraRef.current
+
+    if (!layer || !orb || !aura) {
+      return undefined
+    }
+
+    let pointerX = window.innerWidth / 2
+    let pointerY = window.innerHeight / 2
+    let orbX = pointerX
+    let orbY = pointerY
+    let auraX = pointerX
+    let auraY = pointerY
+    let rafId = 0
+
+    const syncPointer = () => {
+      orbX += (pointerX - orbX) * 0.26
+      orbY += (pointerY - orbY) * 0.26
+      auraX += (pointerX - auraX) * 0.12
+      auraY += (pointerY - auraY) * 0.12
+
+      orb.style.left = `${orbX}px`
+      orb.style.top = `${orbY}px`
+      aura.style.left = `${auraX}px`
+      aura.style.top = `${auraY}px`
+      rafId = window.requestAnimationFrame(syncPointer)
+    }
+
+    const handlePointerMove = (event) => {
+      pointerX = event.clientX
+      pointerY = event.clientY
+      layer.style.setProperty('--sparkle-x', `${event.clientX}px`)
+      layer.style.setProperty('--sparkle-y', `${event.clientY}px`)
+    }
+
+    const handlePointerDown = (event) => {
+      const burst = document.createElement('span')
+      burst.className = 'pointer-ripple'
+      burst.style.left = `${event.clientX}px`
+      burst.style.top = `${event.clientY}px`
+      layer.appendChild(burst)
+
+      burst.addEventListener(
+        'animationend',
+        () => {
+          burst.remove()
+        },
+        { once: true },
+      )
+    }
+
+    syncPointer()
+    window.addEventListener('pointermove', handlePointerMove, { passive: true })
+    window.addEventListener('pointerdown', handlePointerDown, { passive: true })
+
+    return () => {
+      window.cancelAnimationFrame(rafId)
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerdown', handlePointerDown)
+      layer.querySelectorAll('.pointer-ripple').forEach((node) => node.remove())
+    }
+  }, [enabled, reduceMotion])
+
+  if (!enabled || reduceMotion) {
+    return null
+  }
+
+  return (
+    <div ref={layerRef} className="pointer-layer" aria-hidden="true">
+      <span ref={auraRef} className="pointer-aura" />
+      <span ref={orbRef} className="pointer-orb" />
+    </div>
+  )
+}
+
 function updateTiltSurface(event) {
   const card = event.currentTarget
   const bounds = card.getBoundingClientRect()
@@ -694,7 +785,7 @@ function HomePage() {
     <div className="dashboard">
       <section className="dashboard__search-shell glass-panel">
         <div className="dashboard__search-copy">
-          <p className="soft-eyebrow">Home Dashboard</p>
+          <p className="soft-eyebrow">今日看板</p>
           <h1 className="dashboard__headline">今天想偷懒看点什么</h1>
         </div>
         <label className="dashboard__search" htmlFor="dream-search">
@@ -735,7 +826,7 @@ function HomePage() {
             </div>
           </div>
           <div className="profile-panel__content">
-            <p className="soft-eyebrow">Profile</p>
+            <p className="soft-eyebrow">窝主名片</p>
             <h2>懒羊羊の小窝</h2>
             <p>在代码、零食和午睡之间慢慢发光。</p>
             <div className="profile-panel__stats">
@@ -766,7 +857,7 @@ function HomePage() {
         >
           <div className="panel-headline">
             <div>
-              <p className="soft-eyebrow">Photos</p>
+              <p className="soft-eyebrow">懒懒相册</p>
               <h3>照片墙预览</h3>
             </div>
             <Link to="/photos">查看全部</Link>
@@ -789,7 +880,7 @@ function HomePage() {
         >
           <div className="panel-headline">
             <div>
-              <p className="soft-eyebrow">Latest Articles</p>
+              <p className="soft-eyebrow">刚写下的</p>
               <h3>最新文章</h3>
             </div>
             <Link to="/articles">进入文章页</Link>
@@ -815,7 +906,7 @@ function HomePage() {
         >
           <div className="panel-headline">
             <div>
-              <p className="soft-eyebrow">Moments</p>
+              <p className="soft-eyebrow">碎碎念</p>
               <h3>最新说说</h3>
             </div>
             <Link to="/moments">去看心情墙</Link>
@@ -837,7 +928,7 @@ function HomePage() {
         >
           <div className="panel-headline">
             <div>
-              <p className="soft-eyebrow">Tiny Notes</p>
+              <p className="soft-eyebrow">零食口袋</p>
               <h3>趣味小卡片</h3>
             </div>
           </div>
@@ -1151,7 +1242,7 @@ function PhotosPage() {
             >
               <div className="lightbox__header">
                 <div>
-                  <p className="soft-eyebrow">Album</p>
+                  <p className="soft-eyebrow">相册展开</p>
                   <h3>{selectedAlbum.title}</h3>
                 </div>
                 <button type="button" onClick={closeAlbum}>
@@ -1210,7 +1301,7 @@ function MusicPage() {
         <div className="glass-panel playlist-panel">
           <div className="panel-headline">
             <div>
-              <p className="soft-eyebrow">Playlist</p>
+              <p className="soft-eyebrow">陪伴歌单</p>
               <h3>糖纸歌单</h3>
             </div>
           </div>
@@ -1237,14 +1328,14 @@ function AboutPage() {
       <PageHeading title="关于" subtitle="一个藏在草地和云朵里的梦幻小窝" />
       <div className="about-layout">
         <article className="glass-panel about-card">
-          <p className="soft-eyebrow">Profile</p>
+          <p className="soft-eyebrow">关于小窝</p>
           <h3>懒羊羊主题的高质感二次元博客</h3>
           <p>
             这里不想做成普通儿童站，也不想只是贴一堆卡通元素。我更想把懒羊羊的柔软、慵懒、治愈和一点点偷懒的浪漫，收成一个能长期写东西的小窝。
           </p>
         </article>
         <article className="glass-panel about-card">
-          <p className="soft-eyebrow">Now</p>
+          <p className="soft-eyebrow">最近状态</p>
           <h3>目前状态</h3>
           <p>
             首页、文章、说说、照片墙、归档、音乐和设置面板都已经准备好。等第一篇真实文章上线以后，这个页面会更完整。
@@ -1268,7 +1359,7 @@ function PublishGuidePage() {
       <div className="guide-grid">
         {publishFlow.map((step) => (
           <article className="glass-panel guide-step" key={step.title}>
-            <p className="soft-eyebrow">Auto Deploy Flow</p>
+            <p className="soft-eyebrow">自动发布流程</p>
             <h3>{step.title}</h3>
             <p>{step.text}</p>
           </article>
@@ -1278,7 +1369,7 @@ function PublishGuidePage() {
       <article className="glass-panel publish-panel">
         <div className="panel-headline">
           <div>
-            <p className="soft-eyebrow">Checklist</p>
+            <p className="soft-eyebrow">发文提醒</p>
             <h3>发文前的小提醒</h3>
           </div>
         </div>
@@ -1292,7 +1383,7 @@ function PublishGuidePage() {
       <article className="glass-panel publish-panel">
         <div className="panel-headline">
           <div>
-            <p className="soft-eyebrow">Markdown Template</p>
+            <p className="soft-eyebrow">文章模板</p>
             <h3>新文章模板</h3>
           </div>
         </div>
@@ -1379,6 +1470,7 @@ function ArticlePage() {
           <aside className="article-detail__rail">
             <div className="article-detail__toc glass-panel">
               <p className="soft-eyebrow">Article Guide</p>
+              
               <h3>文章目录</h3>
               {headings.length > 0 ? (
                 <ul className="toc-list">
@@ -1436,7 +1528,7 @@ function NotFoundPage() {
   return (
     <section className="page-board">
       <article className="glass-panel not-found-panel">
-        <p className="soft-eyebrow">Lost Cloud</p>
+        <p className="soft-eyebrow">迷路云团</p>
         <h1>这里暂时还没有门牌号</h1>
         <p>像在云朵堆里迷路了一样。先回首页休息一下，或者去发第一篇文章。</p>
         <div className="action-row">
@@ -1536,10 +1628,10 @@ function ArchiveRiverBoard() {
   )
 }
 
-function PageHeading({ title, subtitle }) {
+function PageHeading({ title, subtitle, eyebrow = '云朵分区' }) {
   return (
     <div className="page-heading">
-      <p className="soft-eyebrow">Dream Section</p>
+      <p className="soft-eyebrow">{eyebrow}</p>
       <h1>{title}</h1>
       <p>{subtitle}</p>
     </div>
@@ -1587,7 +1679,7 @@ function MusicPlayerCard({ expanded = false }) {
     >
       <div className="panel-headline">
         <div>
-          <p className="soft-eyebrow">Music</p>
+          <p className="soft-eyebrow">夜里偷听</p>
           <h3>糖果随身听</h3>
         </div>
         <button className="music-card__next" type="button" onClick={nextTrack}>
@@ -1659,7 +1751,7 @@ function UptimePanel() {
         <strong>{timeText}</strong>
       </div>
       <div className="uptime-panel__body">
-        <p className="soft-eyebrow">Status Board</p>
+        <p className="soft-eyebrow">小窝状态</p>
         <h3>站点运行状态</h3>
         <div className="uptime-panel__stats">
           <span>已运行 {days} 天 {hours} 小时 {minutes} 分钟</span>
