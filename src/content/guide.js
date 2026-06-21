@@ -5,7 +5,7 @@ export const publishFlow = [
   },
   {
     title: '2. 补全 frontmatter',
-    text: '填写标题、slug、摘要、分类、发布日期和标签，封面可以填本地图片文件名或外部链接。',
+    text: '填写标题、slug、摘要、分类、发布日期和标签，封面可填本地图片文件名；如果有系列或更新时间，也可以一起补上。',
   },
   {
     title: '3. 用 Markdown 写正文',
@@ -20,6 +20,7 @@ export const publishFlow = [
 export const publishChecklist = [
   'slug 建议只用小写字母、数字和连字符，避免空格。',
   'frontmatter 的日期使用 YYYY-MM-DD，排序会更稳定。',
+  '可以选填 updatedAt、series、draft、showToc 这些字段，分别表示更新时间、系列名、是否草稿和是否显示目录。',
   '封面图如果放本地，直接写文件名，比如 lazy-goat.jpg。',
   '正文插图可以写 `![说明](文件名.png)`，图片放到 src/assets 或文章同目录都能识别。',
   '尽量使用 ## 和 ### 分层，文章页会自动生成目录。',
@@ -32,7 +33,11 @@ slug: my-new-post
 excerpt: 这里写一段 1 到 2 句的摘要。
 category: Reverse
 publishedAt: 2026-06-21
+updatedAt:
+series:
 coverImage:
+draft: false
+showToc: true
 tags:
   - reverse
   - 复盘

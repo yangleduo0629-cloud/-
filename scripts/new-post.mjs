@@ -41,7 +41,11 @@ slug: ${slug}
 excerpt: 请在这里写摘要。
 category: Notes
 publishedAt: ${today()}
+updatedAt:
+series:
 coverImage:
+draft: false
+showToc: true
 tags:
   - notes
 ---

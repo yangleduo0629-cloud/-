@@ -1533,11 +1533,21 @@
   line-height: 1.82;
 }
 
+.article-detail__meta-block {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
 .article-detail__layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 260px;
   gap: 20px;
   margin-top: 24px;
+}
+
+.article-detail__layout--single {
+  grid-template-columns: 1fr;
 }
 
 .markdown-body {
@@ -1686,6 +1696,15 @@
 
 .article-nav-row__item.muted {
   color: var(--muted);
+}
+
+.article-related {
+  margin-top: 28px;
+}
+
+.article-related h3 {
+  margin: 10px 0 0;
+  color: var(--heading);
 }
 
 .not-found-panel h1,

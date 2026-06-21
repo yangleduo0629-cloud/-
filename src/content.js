@@ -68,3 +68,20 @@ export function getAdjacentPosts(posts, slug) {
     nextPost: posts[currentIndex + 1] ?? null,
   }
 }
+
+export function getRelatedPosts(posts, currentPost, limit = 2) {
+  return posts
+    .filter((post) => post.slug !== currentPost.slug)
+    .map((post) => {
+      const sharedTags = post.tags.filter((tag) => currentPost.tags.includes(tag)).length
+      const sameCategory = post.category === currentPost.category ? 1 : 0
+      return {
+        post,
+        score: sharedTags * 3 + sameCategory,
+      }
+    })
+    .filter((entry) => entry.score > 0)
+    .sort((left, right) => right.score - left.score)
+    .slice(0, limit)
+    .map((entry) => entry.post)
+}

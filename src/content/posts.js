@@ -54,6 +54,23 @@ export function resolveContentAsset(value) {
   return assetEntry?.[1] ?? ''
 }
 
+function parseBooleanLike(value, fallback = false) {
+  if (typeof value !== 'string') {
+    return fallback
+  }
+
+  const normalized = value.trim().toLowerCase()
+  if (normalized === 'true') {
+    return true
+  }
+
+  if (normalized === 'false') {
+    return false
+  }
+
+  return fallback
+}
+
 function parseFrontmatter(rawMarkdown) {
   const normalized = rawMarkdown.replace(/\r\n/g, '\n')
   if (!normalized.startsWith('---\n')) {
@@ -123,10 +140,14 @@ function parsePostFile(filePath, rawMarkdown) {
   const excerpt = String(data.excerpt || '').trim()
   const category = String(data.category || 'Notes').trim()
   const publishedAt = String(data.publishedAt || '').trim()
+  const updatedAt = String(data.updatedAt || '').trim()
+  const series = String(data.series || '').trim()
   const coverImageUrl = resolveContentAsset(data.coverImage)
   const tags = Array.isArray(data.tags)
     ? data.tags.map((item) => String(item).trim()).filter(Boolean)
     : []
+  const draft = parseBooleanLike(data.draft, false)
+  const showToc = parseBooleanLike(data.showToc, true)
 
   return {
     slug,
@@ -134,14 +155,19 @@ function parsePostFile(filePath, rawMarkdown) {
     excerpt,
     category,
     publishedAt,
+    updatedAt,
+    series,
     coverImageUrl,
     tags,
+    draft,
+    showToc,
     content,
   }
 }
 
 export const posts = Object.entries(markdownModules)
   .map(([filePath, rawMarkdown]) => parsePostFile(filePath, rawMarkdown))
+  .filter((post) => !post.draft)
   .sort((left, right) => new Date(right.publishedAt) - new Date(left.publishedAt))
 
 export const categories = [

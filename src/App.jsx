@@ -1,8 +1,5 @@
 import {
-  Archive,
   Bell,
-  BookOpen,
-  BookmarkSimple,
   ChatsCircle,
   ClockCountdown,
   Cloud,
@@ -12,19 +9,13 @@ import {
   Handshake,
   Headphones,
   Heart,
-  House,
-  ImagesSquare,
   List,
   MagnifyingGlass,
   MoonStars,
-  MusicNotes,
-  NotePencil,
-  PaperPlaneTilt,
   PauseCircle,
   PlayCircle,
   Sparkle,
   Sun,
-  User,
   Waveform,
 } from '@phosphor-icons/react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
@@ -50,12 +41,7 @@ import {
   useParams,
 } from 'react-router-dom'
 import './App.css'
-import dreamBgDay from './assets/dream-bg-day.webp'
-import dreamBgSunset from './assets/dream-bg-sunset.webp'
 import lazyGoat from './assets/lazy-goat.jpg'
-import everybodyHappyGoat from './assets/everybody-happy-goat.mp3'
-import littleJumpFrog from './assets/little-jump-frog.mp3'
-import stillAliveJerk from './assets/still-alive-jerk.mp3'
 import {
   articleTemplate,
   publishChecklist,
@@ -63,177 +49,27 @@ import {
 } from './content/guide'
 import { categories, posts, resolveContentAsset } from './content/posts'
 import {
+  albumCollections,
+  archiveNodes,
+  backgroundOptions,
+  favoriteEntries,
+  friendEntries,
+  guestbookEndpoint,
+  guestbookTips,
+  momentGroups,
+  navItems,
+  novelChapters,
+  playlist,
+  projectEntries,
+} from './content/site-data'
+import {
   createHeadingIdFactory,
   estimateReadingMinutes,
   extractHeadings,
   formatDate,
   getAdjacentPosts,
+  getRelatedPosts,
 } from './content'
-
-const navItems = [
-  { path: '/', label: '首页', icon: House },
-  { path: '/articles', label: '文章', icon: BookOpen },
-  { path: '/moments', label: '说说', icon: ChatsCircle },
-  { path: '/guestbook', label: '留言', icon: PaperPlaneTilt },
-  { path: '/novels', label: '小说', icon: NotePencil },
-  { path: '/favorites', label: '收藏夹', icon: BookmarkSimple },
-  { path: '/projects', label: '项目', icon: Code },
-  { path: '/friends', label: '友链', icon: Handshake },
-  { path: '/photos', label: '照片墙', icon: ImagesSquare },
-  { path: '/archives', label: '归档', icon: Archive },
-  { path: '/music', label: '音乐', icon: MusicNotes },
-  { path: '/about', label: '关于', icon: User },
-]
-
-const backgroundOptions = [
-  { key: 'day', label: '午后草地', image: dreamBgDay },
-  { key: 'sunset', label: '云朵黄昏', image: dreamBgSunset },
-]
-
-const momentGroups = [
-  {
-    date: '2026.06.21',
-    items: [
-      {
-        mood: '懒洋洋',
-        text: '今天先把首页收拾得像一个真正可以住进去的小窝，再慢慢把内容填满。',
-        likes: 14,
-        comments: 3,
-        image: dreamBgDay,
-      },
-      {
-        mood: '奶油云',
-        text: '夜里抱着零食听歌的时候，最适合决定博客的新配色和背景。',
-        likes: 8,
-        comments: 2,
-      },
-    ],
-  },
-  {
-    date: '2026.06.20',
-    items: [
-      {
-        mood: '草地风',
-        text: '有时候页面先漂亮起来，写作的欲望也会跟着回来。',
-        likes: 11,
-        comments: 1,
-        image: dreamBgSunset,
-      },
-    ],
-  },
-]
-
-const albumCollections = [
-  {
-    title: '午睡收纳盒',
-    count: 12,
-    caption: '软垫、云朵、甜点和懒羊羊的一小段午后。',
-    stack: [dreamBgDay, lazyGoat, dreamBgSunset],
-    images: [dreamBgDay, lazyGoat, dreamBgSunset, dreamBgDay],
-  },
-  {
-    title: '零食云层',
-    count: 8,
-    caption: '像把饼干盒、铃铛和草地阳光一起夹进相册里。',
-    stack: [dreamBgSunset, dreamBgDay, lazyGoat],
-    images: [dreamBgSunset, dreamBgDay, lazyGoat, dreamBgSunset],
-  },
-  {
-    title: '慢慢发光',
-    count: 10,
-    caption: '适合用来收藏那些看一眼就会变得柔软的画面。',
-    stack: [lazyGoat, dreamBgDay, dreamBgSunset],
-    images: [lazyGoat, dreamBgDay, dreamBgSunset, lazyGoat],
-  },
-]
-
-const archiveNodes = [
-  { year: '2026', title: '现在', text: '博客正在重新整理，第一篇真正的文章会从这里开始。', align: 'top' },
-  { year: '2025', title: '想法', text: '把学习记录、说说和照片都慢慢装进同一个梦境里。', align: 'bottom' },
-  { year: '2024', title: '种子', text: '最初只是想做一个能让自己舒服停留的页面。', align: 'top' },
-  { year: '2023', title: '微光', text: '草地、零食、晚风和一点点想写东西的心情。', align: 'bottom' },
-]
-
-const guestbookTips = [
-  {
-    title: '自由留言',
-    text: '想打招呼、提建议、交换友链，或者单纯留下一句今天的心情，都可以直接写在这里。',
-  },
-  {
-    title: '回复方式',
-    text: '如果你愿意收到回信，可以顺手留下邮箱。没有邮箱也可以直接提交。',
-  },
-  {
-    title: '第一次启用',
-    text: '第一次有人提交时，站长邮箱可能会收到一封激活确认邮件，确认后后续留言就会正常送达。',
-  },
-]
-
-const novelChapters = [
-  { title: '第一卷 · 午睡之前', meta: '预定章节 08', desc: '像在云朵里写下的慢节奏故事，目前还在草稿期。' },
-  { title: '第二卷 · 零食口袋', meta: '预定章节 05', desc: '以后会收纳一些带剧情感的小短篇和梦境片段。' },
-]
-
-const favoriteEntries = [
-  '奶油吐司和热牛奶',
-  '蓝天、草地和午睡垫',
-  '旧番、轻小说和慢节奏歌单',
-  '把技术笔记写成像日记一样的东西',
-]
-
-const projectEntries = [
-  {
-    title: 'Lazy Shell',
-    desc: '一个准备用来收纳个人脚本、片段和碎碎念的小工具仓库。',
-    state: '规划中',
-  },
-  {
-    title: 'Dream Notes',
-    desc: '未来会继续把 CTF 学习记录整理成更完整的专题内容。',
-    state: '缓慢施工',
-  },
-]
-
-const friendEntries = [
-  {
-    name: '摁湿chen7chen',
-    url: 'https://heliumsenbrg.github.io/ctf-writeup-blog/',
-    site: 'heliumsenbrg.github.io/ctf-writeup-blog',
-    desc: 'MISSION_BRIEFING，专注 CTF WriteUp 和 Web Security Writeups。',
-  },
-  {
-    name: '草地搭子',
-    url: '',
-    site: '比如 https://example.com',
-    desc: '如果你也在认真写博客，这里会预留一个温柔的位置。',
-  },
-]
-
-const playlist = [
-  {
-    title: '大家一起喜羊羊',
-    artist: '周笔畅',
-    cover: dreamBgDay,
-    src: everybodyHappyGoat,
-    lyric: '把草地、铃铛和快乐都装进播放器里，一按下就像整个小窝一起热闹起来。',
-  },
-  {
-    title: '小跳蛙',
-    artist: '青蛙乐队',
-    cover: dreamBgSunset,
-    src: littleJumpFrog,
-    lyric: '适合一边整理博客一边轻轻摇头晃脑，像在午后草地上慢慢蹦两下。',
-  },
-  {
-    title: '又活了一天 (Jerk版)',
-    artist: '庄东茹',
-    cover: lazyGoat,
-    src: stillAliveJerk,
-    lyric: '夜里困困的时候最适合放这一首，像抱着枕头把今天慢慢听完。',
-  },
-]
-
-const guestbookEndpoint = 'https://formsubmit.co/ajax/yangleduo0629@gmail.com'
 
 function getGreeting() {
   const hour = new Date().getHours()
@@ -1617,20 +1453,39 @@ function ArticlePage() {
 
   const headings = extractHeadings(post.content)
   const { previousPost, nextPost } = getAdjacentPosts(articleFeed, post.slug)
+  const relatedPosts = getRelatedPosts(articleFeed, post)
   const createHeadingId = createHeadingIdFactory()
   const readingMinutes = post.readTime || estimateReadingMinutes(post.content)
+  const showToc = post.showToc !== false && headings.length > 0
 
   return (
     <section className="page-board">
       <article className="glass-panel article-detail">
         <div className="article-detail__meta">
           <span>{formatDate(post.publishedAt)}</span>
+          {post.updatedAt && post.updatedAt !== post.publishedAt && (
+            <span>更新于 {formatDate(post.updatedAt)}</span>
+          )}
           <span>{post.category}</span>
           <span>{readingMinutes} 分钟阅读</span>
         </div>
         <h1 className="article-detail__title">{post.title}</h1>
         <p className="article-detail__excerpt">{post.excerpt}</p>
-        <div className="article-detail__layout">
+        {(post.series || post.tags.length > 0) && (
+          <div className="article-detail__meta-block">
+            {post.series && <span className="post-tag">系列：{post.series}</span>}
+            {post.tags.length > 0 && (
+              <div className="tag-row">
+                {post.tags.map((tag) => (
+                  <span className="post-tag" key={tag}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        <div className={`article-detail__layout${showToc ? '' : ' article-detail__layout--single'}`}>
           <div className="article-detail__body markdown-body">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
@@ -1703,12 +1558,11 @@ function ArticlePage() {
               {post.content}
             </ReactMarkdown>
           </div>
-          <aside className="article-detail__rail">
-            <div className="article-detail__toc glass-panel">
-              <p className="soft-eyebrow">Article Guide</p>
-              
-              <h3>文章目录</h3>
-              {headings.length > 0 ? (
+          {showToc && (
+            <aside className="article-detail__rail">
+              <div className="article-detail__toc glass-panel">
+                <p className="soft-eyebrow">Article Guide</p>
+                <h3>文章目录</h3>
                 <ul className="toc-list">
                   {headings.map((heading) => (
                     <li className={`toc-list__item depth-${heading.depth}`} key={heading.id}>
@@ -1722,11 +1576,9 @@ function ArticlePage() {
                     </li>
                   ))}
                 </ul>
-              ) : (
-                <p className="sidebar-text">这篇文章还没有分节标题。</p>
-              )}
-            </div>
-          </aside>
+              </div>
+            </aside>
+          )}
         </div>
 
         <div className="article-nav-row">
@@ -1753,6 +1605,21 @@ function ArticlePage() {
             </div>
           )}
         </div>
+
+        {relatedPosts.length > 0 && (
+          <div className="article-related">
+            <p className="soft-eyebrow">Related Posts</p>
+            <h3>相关文章</h3>
+            <div className="article-nav-row">
+              {relatedPosts.map((relatedPost) => (
+                <Link className="article-nav-row__item" key={relatedPost.slug} to={`/post/${relatedPost.slug}`}>
+                  <span>{relatedPost.category}</span>
+                  <strong>{relatedPost.title}</strong>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </article>
     </section>
   )
