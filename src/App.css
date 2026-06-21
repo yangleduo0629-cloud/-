@@ -1423,6 +1423,121 @@
   margin-top: 24px;
 }
 
+.markdown-body {
+  color: var(--text);
+  line-height: 1.85;
+}
+
+.markdown-body > *:first-child {
+  margin-top: 0;
+}
+
+.markdown-body h2,
+.markdown-body h3 {
+  color: var(--heading);
+  margin: 1.6em 0 0.6em;
+}
+
+.markdown-body p,
+.markdown-body ul,
+.markdown-body ol {
+  margin: 1em 0;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.4em;
+}
+
+.markdown-body li + li {
+  margin-top: 0.45em;
+}
+
+.markdown-figure {
+  margin: 1.5em 0;
+}
+
+.markdown-image-link {
+  display: block;
+}
+
+.markdown-image {
+  width: 100%;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  box-shadow: var(--glass-shadow);
+}
+
+.markdown-caption {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.markdown-link {
+  color: var(--link);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.markdown-quote {
+  margin: 1.4em 0;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.18);
+  border-left: 4px solid rgba(255, 226, 161, 0.9);
+}
+
+.inline-code {
+  padding: 0.14em 0.42em;
+  border-radius: 10px;
+  background: rgba(20, 28, 44, 0.08);
+  color: var(--heading);
+  font-family: 'Consolas', 'SFMono-Regular', monospace;
+}
+
+.code-panel {
+  overflow-x: auto;
+  border-radius: 22px;
+  background: rgba(20, 28, 44, 0.82);
+  color: rgba(255, 249, 239, 0.95);
+}
+
+.code-panel--block {
+  margin: 1.4em 0;
+  padding: 18px 20px;
+}
+
+.toc-list {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  margin: 16px 0 0;
+  list-style: none;
+}
+
+.toc-list__item.depth-3 {
+  padding-left: 14px;
+}
+
+.toc-button {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--heading-soft);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar-text {
+  margin: 14px 0 0;
+  color: var(--muted);
+  line-height: 1.75;
+}
+
 .article-detail__toc {
   position: sticky;
   top: 18px;

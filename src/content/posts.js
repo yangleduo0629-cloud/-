@@ -4,10 +4,17 @@ const markdownModules = import.meta.glob('./posts/*.md', {
   query: '?raw',
 })
 
-const assetModules = import.meta.glob('../assets/*.{png,jpg,jpeg,webp,avif,svg}', {
-  eager: true,
-  import: 'default',
-})
+const assetModules = Object.assign(
+  {},
+  import.meta.glob('../assets/*.{png,jpg,jpeg,webp,avif,svg,gif}', {
+    eager: true,
+    import: 'default',
+  }),
+  import.meta.glob('./posts/**/*.{png,jpg,jpeg,webp,avif,svg,gif}', {
+    eager: true,
+    import: 'default',
+  }),
+)
 
 function slugifyText(input) {
   return String(input)
@@ -19,19 +26,30 @@ function slugifyText(input) {
     .replace(/^-|-$/g, '')
 }
 
-function resolveCoverImage(value) {
+export function resolveContentAsset(value) {
   if (!value) {
     return ''
   }
 
-  if (/^https?:\/\//i.test(value)) {
+  if (/^(https?:)?\/\//i.test(value) || value.startsWith('/')) {
     return value
   }
 
-  const normalizedName = String(value).split('/').pop()
-  const assetEntry = Object.entries(assetModules).find(([filePath]) =>
-    filePath.endsWith(`/${normalizedName}`),
-  )
+  const normalizedPath = String(value)
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\.?\//, '')
+    .replace(/^posts\//, '')
+    .split(/[?#]/)[0]
+
+  const assetEntries = Object.entries(assetModules)
+  const assetEntry = assetEntries.find(([filePath]) =>
+    filePath.replace(/\\/g, '/').endsWith(`/${normalizedPath}`),
+  ) ?? assetEntries.find(([filePath]) => {
+    const normalizedFilePath = filePath.replace(/\\/g, '/')
+    const fileName = normalizedFilePath.split('/').pop()
+    return fileName === normalizedPath.split('/').pop()
+  })
 
   return assetEntry?.[1] ?? ''
 }
@@ -105,7 +123,7 @@ function parsePostFile(filePath, rawMarkdown) {
   const excerpt = String(data.excerpt || '').trim()
   const category = String(data.category || 'Notes').trim()
   const publishedAt = String(data.publishedAt || '').trim()
-  const coverImageUrl = resolveCoverImage(data.coverImage)
+  const coverImageUrl = resolveContentAsset(data.coverImage)
   const tags = Array.isArray(data.tags)
     ? data.tags.map((item) => String(item).trim()).filter(Boolean)
     : []

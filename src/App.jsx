@@ -61,7 +61,7 @@ import {
   publishChecklist,
   publishFlow,
 } from './content/guide'
-import { categories, posts } from './content/posts'
+import { categories, posts, resolveContentAsset } from './content/posts'
 import {
   createHeadingIdFactory,
   estimateReadingMinutes,
@@ -1442,6 +1442,29 @@ function ArticlePage() {
                     >
                       {children}
                     </a>
+                  )
+                },
+                img({ src, alt, title }) {
+                  const resolvedSrc =
+                    typeof src === 'string' ? resolveContentAsset(src) || src : ''
+
+                  return (
+                    <figure className="markdown-figure">
+                      <a
+                        className="markdown-image-link"
+                        href={resolvedSrc}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        <img
+                          className="markdown-image"
+                          src={resolvedSrc}
+                          alt={alt || title || '文章插图'}
+                          loading="lazy"
+                        />
+                      </a>
+                      {title && <figcaption className="markdown-caption">{title}</figcaption>}
+                    </figure>
                   )
                 },
                 blockquote({ children }) {
