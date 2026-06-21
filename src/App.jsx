@@ -53,9 +53,9 @@ import './App.css'
 import dreamBgDay from './assets/dream-bg-day.webp'
 import dreamBgSunset from './assets/dream-bg-sunset.webp'
 import lazyGoat from './assets/lazy-goat.jpg'
-import sheepTrackCloud from './assets/sheep-track-cloud.wav'
-import sheepTrackDaydream from './assets/sheep-track-daydream.wav'
-import sheepTrackNaptime from './assets/sheep-track-naptime.wav'
+import everybodyHappyGoat from './assets/everybody-happy-goat.mp3'
+import littleJumpFrog from './assets/little-jump-frog.mp3'
+import stillAliveJerk from './assets/still-alive-jerk.mp3'
 import {
   articleTemplate,
   publishChecklist,
@@ -154,10 +154,19 @@ const archiveNodes = [
   { year: '2023', title: '微光', text: '草地、零食、晚风和一点点想写东西的心情。', align: 'bottom' },
 ]
 
-const guestbookNotes = [
-  { name: '云朵来客', text: '以后看到喜欢的内容，想在这里留一颗糖。' },
-  { name: '草地访客', text: '希望这个小窝会越来越像你想象中的样子。' },
-  { name: '深夜听众', text: '请继续把那些温柔和认真都写下来。' },
+const guestbookTips = [
+  {
+    title: '自由留言',
+    text: '想打招呼、提建议、交换友链，或者单纯留下一句今天的心情，都可以直接写在这里。',
+  },
+  {
+    title: '回复方式',
+    text: '如果你愿意收到回信，可以顺手留下邮箱。没有邮箱也可以直接提交。',
+  },
+  {
+    title: '第一次启用',
+    text: '第一次有人提交时，站长邮箱可能会收到一封激活确认邮件，确认后后续留言就会正常送达。',
+  },
 ]
 
 const novelChapters = [
@@ -202,27 +211,29 @@ const friendEntries = [
 
 const playlist = [
   {
-    title: '午后发呆练习曲',
-    artist: 'Lazy Sheep FM',
+    title: '大家一起喜羊羊',
+    artist: '周笔畅',
     cover: dreamBgDay,
-    src: sheepTrackDaydream,
-    lyric: '今天的风很软，适合在代码和午睡之间慢慢听完这一首歌。',
+    src: everybodyHappyGoat,
+    lyric: '把草地、铃铛和快乐都装进播放器里，一按下就像整个小窝一起热闹起来。',
   },
   {
-    title: '云层里的糖纸回响',
-    artist: 'Dreamland Radio',
+    title: '小跳蛙',
+    artist: '青蛙乐队',
     cover: dreamBgSunset,
-    src: sheepTrackCloud,
-    lyric: '像把傍晚的云朵和一点点甜味一起装进耳机里，慢慢听就好了。',
+    src: littleJumpFrog,
+    lyric: '适合一边整理博客一边轻轻摇头晃脑，像在午后草地上慢慢蹦两下。',
   },
   {
-    title: '抱着枕头听的歌',
-    artist: 'Soft Wool Beats',
+    title: '又活了一天 (Jerk版)',
+    artist: '庄东茹',
     cover: lazyGoat,
-    src: sheepTrackNaptime,
-    lyric: '适合困困的时候放着循环，像给整个页面盖上一层很轻的梦。',
+    src: stillAliveJerk,
+    lyric: '夜里困困的时候最适合放这一首，像抱着枕头把今天慢慢听完。',
   },
 ]
+
+const guestbookEndpoint = 'https://formsubmit.co/ajax/yangleduo0629@gmail.com'
 
 function getGreeting() {
   const hour = new Date().getHours()
@@ -1079,21 +1090,168 @@ function MomentsPage() {
 }
 
 function GuestbookPage() {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    site: '',
+    message: '',
+  })
+  const [submitState, setSubmitState] = useState('idle')
+  const [submitMessage, setSubmitMessage] = useState('')
+
+  function updateField(event) {
+    const { name, value } = event.target
+    setFormData((currentData) => ({
+      ...currentData,
+      [name]: value,
+    }))
+  }
+
+  async function submitGuestbook(event) {
+    event.preventDefault()
+    setSubmitState('submitting')
+    setSubmitMessage('')
+
+    const body = new FormData()
+    body.append('name', formData.name)
+    body.append('email', formData.email)
+    body.append('site', formData.site)
+    body.append('message', formData.message)
+    body.append('_subject', '懒羊羊の小窝收到一条新留言')
+    body.append('_template', 'table')
+    body.append('_captcha', 'false')
+    body.append('_url', window.location.href)
+
+    try {
+      const response = await fetch(guestbookEndpoint, {
+        method: 'POST',
+        body,
+        headers: {
+          Accept: 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      setSubmitState('success')
+      setSubmitMessage('留言已经送到小窝邮箱啦。你也可以晚一点回来看看有没有回音。')
+      setFormData({
+        name: '',
+        email: '',
+        site: '',
+        message: '',
+      })
+    } catch (error) {
+      console.error('留言提交失败:', error)
+      setSubmitState('error')
+      setSubmitMessage('这次没有顺利送达，请稍后再试一次。')
+    }
+  }
+
   return (
     <section className="page-board">
       <PageHeading title="留言" subtitle="像云朵便签一样的来访留言板" />
       <div className="guestbook-grid">
-        {guestbookNotes.map((note) => (
-          <motion.article
-            key={note.name}
-            className="glass-panel guest-note"
-            whileHover={{ y: -5, rotate: -1 }}
-            transition={{ type: 'spring', stiffness: 220, damping: 16 }}
-          >
-            <strong>{note.name}</strong>
-            <p>{note.text}</p>
-          </motion.article>
-        ))}
+        <motion.article
+          className="glass-panel guestbook-form-panel"
+          whileHover={{ y: -4 }}
+          transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+        >
+          <div className="panel-headline">
+            <div>
+              <p className="soft-eyebrow">自由留言</p>
+              <h3>给小窝留一句话</h3>
+            </div>
+          </div>
+
+          <form className="guestbook-form" onSubmit={submitGuestbook}>
+            <label className="guestbook-field">
+              <span>昵称</span>
+              <input
+                name="name"
+                type="text"
+                value={formData.name}
+                onChange={updateField}
+                placeholder="比如 草地访客"
+                required
+              />
+            </label>
+
+            <label className="guestbook-field">
+              <span>邮箱，可选</span>
+              <input
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={updateField}
+                placeholder="想收到回复可以留邮箱"
+              />
+            </label>
+
+            <label className="guestbook-field">
+              <span>站点，可选</span>
+              <input
+                name="site"
+                type="url"
+                value={formData.site}
+                onChange={updateField}
+                placeholder="https://your-blog.example"
+              />
+            </label>
+
+            <label className="guestbook-field">
+              <span>留言内容</span>
+              <textarea
+                name="message"
+                value={formData.message}
+                onChange={updateField}
+                placeholder="今天也欢迎你来这里发呆、提建议、交换友链。"
+                rows={6}
+                required
+              />
+            </label>
+
+            <div className="guestbook-form__actions">
+              <button
+                className="action-button action-button--primary"
+                type="submit"
+                disabled={submitState === 'submitting'}
+              >
+                {submitState === 'submitting' ? '正在送出...' : '提交留言'}
+              </button>
+            </div>
+
+            {submitState !== 'idle' && (
+              <p className={`guestbook-status guestbook-status--${submitState}`}>
+                {submitMessage}
+              </p>
+            )}
+          </form>
+        </motion.article>
+
+        <motion.article
+          className="glass-panel guestbook-note-panel"
+          whileHover={{ y: -4 }}
+          transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+        >
+          <div className="panel-headline">
+            <div>
+              <p className="soft-eyebrow">留言说明</p>
+              <h3>访客怎么留言</h3>
+            </div>
+          </div>
+
+          <div className="guestbook-note-list">
+            {guestbookTips.map((tip) => (
+              <article className="guest-note" key={tip.title}>
+                <strong>{tip.title}</strong>
+                <p>{tip.text}</p>
+              </article>
+            ))}
+          </div>
+        </motion.article>
       </div>
     </section>
   )
