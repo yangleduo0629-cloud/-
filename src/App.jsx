@@ -1,14 +1,57 @@
-import { Children, isValidElement, useState } from 'react'
+import {
+  Archive,
+  Bell,
+  BookOpen,
+  BookmarkSimple,
+  ChatsCircle,
+  ClockCountdown,
+  Cloud,
+  Code,
+  FlowerLotus,
+  GearSix,
+  Handshake,
+  Headphones,
+  Heart,
+  House,
+  ImagesSquare,
+  List,
+  MagnifyingGlass,
+  MoonStars,
+  MusicNotes,
+  NotePencil,
+  PaperPlaneTilt,
+  PauseCircle,
+  PlayCircle,
+  Sparkle,
+  Sun,
+  User,
+  Waveform,
+} from '@phosphor-icons/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import {
+  Children,
+  isValidElement,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { HashRouter, Link, NavLink, Route, Routes, useNavigate, useParams } from 'react-router-dom'
-import './App.css'
-import lazyGoat from './assets/lazy-goat.jpg'
 import {
-  articleTemplate,
-  publishChecklist,
-  publishFlow,
-} from './content/guide'
+  HashRouter,
+  Link,
+  NavLink,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useParams,
+} from 'react-router-dom'
+import './App.css'
+import dreamBgDay from './assets/dream-bg-day.webp'
+import dreamBgSunset from './assets/dream-bg-sunset.webp'
+import lazyGoat from './assets/lazy-goat.jpg'
 import { categories, posts } from './content/posts'
 import {
   createHeadingIdFactory,
@@ -18,16 +61,176 @@ import {
   getAdjacentPosts,
 } from './content'
 
-const topLinks = [
-  { to: '/', label: '首页' },
-  { to: '/publish', label: '发布指南' },
+const navItems = [
+  { path: '/', label: '首页', icon: House },
+  { path: '/articles', label: '文章', icon: BookOpen },
+  { path: '/moments', label: '说说', icon: ChatsCircle },
+  { path: '/guestbook', label: '留言', icon: PaperPlaneTilt },
+  { path: '/novels', label: '小说', icon: NotePencil },
+  { path: '/favorites', label: '收藏夹', icon: BookmarkSimple },
+  { path: '/projects', label: '项目', icon: Code },
+  { path: '/friends', label: '友链', icon: Handshake },
+  { path: '/photos', label: '照片墙', icon: ImagesSquare },
+  { path: '/archives', label: '归档', icon: Archive },
+  { path: '/music', label: '音乐', icon: MusicNotes },
+  { path: '/about', label: '关于', icon: User },
 ]
 
-const siteNotes = [
-  '文章已清空，准备重新开始。',
-  '发文方式为 Markdown 加 GitHub Pages。',
-  '后续会以 CTF 学习记录为主线。',
+const backgroundOptions = [
+  { key: 'day', label: '午后草地', image: dreamBgDay },
+  { key: 'sunset', label: '云朵黄昏', image: dreamBgSunset },
 ]
+
+const previewArticles = [
+  {
+    slug: '',
+    title: '草地边的第一篇逆向记录',
+    excerpt: '当正式文章还没写下时，这里先放一张带着点心和云朵气味的封面卡。',
+    category: '技术',
+    publishedAt: '2026-06-21',
+    coverImageUrl: dreamBgDay,
+    views: 238,
+    likes: 31,
+    readTime: 6,
+    previewOnly: true,
+  },
+  {
+    slug: '',
+    title: '懒洋洋的碎碎念和夜里听歌时刻',
+    excerpt: '像抱着抱枕记录心情一样，把说说和灵感写成柔软的小卡片。',
+    category: '闲聊',
+    publishedAt: '2026-06-20',
+    coverImageUrl: dreamBgSunset,
+    views: 172,
+    likes: 24,
+    readTime: 4,
+    previewOnly: true,
+  },
+  {
+    slug: '',
+    title: '午睡之前想写下的学习备忘',
+    excerpt: '封面、渐变、时间、阅读量都已经准备好，只差真实内容慢慢填进来。',
+    category: '日常',
+    publishedAt: '2026-06-19',
+    coverImageUrl: lazyGoat,
+    views: 149,
+    likes: 19,
+    readTime: 5,
+    previewOnly: true,
+  },
+]
+
+const momentGroups = [
+  {
+    date: '2026.06.21',
+    items: [
+      {
+        mood: '懒洋洋',
+        text: '今天先把首页收拾得像一个真正可以住进去的小窝，再慢慢把内容填满。',
+        likes: 14,
+      },
+      {
+        mood: '奶油云',
+        text: '夜里抱着零食听歌的时候，最适合决定博客的新配色和背景。',
+        likes: 8,
+      },
+    ],
+  },
+  {
+    date: '2026.06.20',
+    items: [
+      {
+        mood: '草地风',
+        text: '有时候页面先漂亮起来，写作的欲望也会跟着回来。',
+        likes: 11,
+      },
+    ],
+  },
+]
+
+const albumCollections = [
+  {
+    title: '午睡收纳盒',
+    count: 12,
+    caption: '软垫、云朵、甜点和懒羊羊的一小段午后。',
+    stack: [dreamBgDay, lazyGoat, dreamBgSunset],
+    images: [dreamBgDay, lazyGoat, dreamBgSunset, dreamBgDay],
+  },
+  {
+    title: '零食云层',
+    count: 8,
+    caption: '像把饼干盒、铃铛和草地阳光一起夹进相册里。',
+    stack: [dreamBgSunset, dreamBgDay, lazyGoat],
+    images: [dreamBgSunset, dreamBgDay, lazyGoat, dreamBgSunset],
+  },
+  {
+    title: '慢慢发光',
+    count: 10,
+    caption: '适合用来收藏那些看一眼就会变得柔软的画面。',
+    stack: [lazyGoat, dreamBgDay, dreamBgSunset],
+    images: [lazyGoat, dreamBgDay, dreamBgSunset, lazyGoat],
+  },
+]
+
+const archiveNodes = [
+  { year: '2026', title: '现在', text: '博客正在重新整理，第一篇真正的文章会从这里开始。', align: 'top' },
+  { year: '2025', title: '想法', text: '把学习记录、说说和照片都慢慢装进同一个梦境里。', align: 'bottom' },
+  { year: '2024', title: '种子', text: '最初只是想做一个能让自己舒服停留的页面。', align: 'top' },
+  { year: '2023', title: '微光', text: '草地、零食、晚风和一点点想写东西的心情。', align: 'bottom' },
+]
+
+const guestbookNotes = [
+  { name: '云朵来客', text: '以后看到喜欢的内容，想在这里留一颗糖。' },
+  { name: '草地访客', text: '希望这个小窝会越来越像你想象中的样子。' },
+  { name: '深夜听众', text: '请继续把那些温柔和认真都写下来。' },
+]
+
+const novelChapters = [
+  { title: '第一卷 · 午睡之前', meta: '预定章节 08', desc: '像在云朵里写下的慢节奏故事，目前还在草稿期。' },
+  { title: '第二卷 · 零食口袋', meta: '预定章节 05', desc: '以后会收纳一些带剧情感的小短篇和梦境片段。' },
+]
+
+const favoriteEntries = [
+  '奶油吐司和热牛奶',
+  '蓝天、草地和午睡垫',
+  '旧番、轻小说和慢节奏歌单',
+  '把技术笔记写成像日记一样的东西',
+]
+
+const projectEntries = [
+  {
+    title: 'Lazy Shell',
+    desc: '一个准备用来收纳个人脚本、片段和碎碎念的小工具仓库。',
+    state: '规划中',
+  },
+  {
+    title: 'Dream Notes',
+    desc: '未来会继续把 CTF 学习记录整理成更完整的专题内容。',
+    state: '缓慢施工',
+  },
+]
+
+const friendEntries = [
+  { name: '云朵同桌', desc: '以后会把喜欢的博客和朋友站点慢慢挂上来。' },
+  { name: '草地搭子', desc: '如果你也在认真写博客，这里会预留一个温柔的位置。' },
+]
+
+const playlist = [
+  { title: '午后发呆练习曲', artist: 'Lazy Sheep FM', cover: dreamBgDay },
+  { title: '云层里的糖纸回响', artist: 'Dreamland Radio', cover: dreamBgSunset },
+  { title: '抱着枕头听的歌', artist: 'Soft Wool Beats', cover: lazyGoat },
+]
+
+function getGreeting() {
+  const hour = new Date().getHours()
+  if (hour < 11) {
+    return '早上也适合慢慢发呆'
+  }
+  if (hour < 18) {
+    return '今天也适合慢慢发呆'
+  }
+  return '夜里抱着零食偷偷听歌'
+}
 
 function getTextContent(children) {
   return Children.toArray(children)
@@ -52,284 +255,896 @@ function scrollToHeading(id) {
   })
 }
 
-function App() {
+function buildArticleFeed() {
+  if (posts.length === 0) {
+    return previewArticles
+  }
+
+  return posts.map((post, index) => ({
+    ...post,
+    coverImageUrl:
+      post.coverImageUrl || backgroundOptions[index % backgroundOptions.length].image,
+    views: 140 + index * 26,
+    likes: 18 + index * 7,
+    readTime: estimateReadingMinutes(post.content),
+    previewOnly: false,
+  }))
+}
+
+function readStoredTheme() {
+  if (typeof window === 'undefined') {
+    return 'light'
+  }
+
+  const savedTheme = window.localStorage.getItem('lazy-theme')
+  return savedTheme === 'dark' || savedTheme === 'light' ? savedTheme : 'light'
+}
+
+function readStoredBackground() {
+  if (typeof window === 'undefined') {
+    return 'day'
+  }
+
+  const savedBackground = window.localStorage.getItem('lazy-background')
+  return savedBackground === 'day' || savedBackground === 'sunset'
+    ? savedBackground
+    : 'day'
+}
+
+function readStoredBlur() {
+  if (typeof window === 'undefined') {
+    return 18
+  }
+
+  const savedBlur = Number(window.localStorage.getItem('lazy-blur'))
+  return Number.isFinite(savedBlur)
+    ? Math.min(24, Math.max(10, savedBlur))
+    : 18
+}
+
+function readStoredEffects() {
+  if (typeof window === 'undefined') {
+    return true
+  }
+
+  return window.localStorage.getItem('lazy-effects') !== 'false'
+}
+
+function shouldShowWelcome() {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  return window.sessionStorage.getItem('lazy-welcome-shown') == null
+}
+
+export default function App() {
   return (
     <HashRouter>
       <Routes>
-        <Route
-          path="/"
-          element={
-            <SiteLayout>
-              <HomePage />
-            </SiteLayout>
-          }
-        />
-        <Route
-          path="/post/:slug"
-          element={
-            <SiteLayout>
-              <ArticlePage />
-            </SiteLayout>
-          }
-        />
-        <Route
-          path="/publish"
-          element={
-            <SiteLayout>
-              <PublishGuidePage />
-            </SiteLayout>
-          }
-        />
-        <Route
-          path="*"
-          element={
-            <SiteLayout>
-              <NotFoundPage />
-            </SiteLayout>
-          }
-        />
+        <Route element={<SiteLayout />}>
+          <Route index element={<HomePage />} />
+          <Route path="articles" element={<ArticlesPage />} />
+          <Route path="moments" element={<MomentsPage />} />
+          <Route path="guestbook" element={<GuestbookPage />} />
+          <Route path="novels" element={<NovelsPage />} />
+          <Route path="favorites" element={<FavoritesPage />} />
+          <Route path="projects" element={<ProjectsPage />} />
+          <Route path="friends" element={<FriendsPage />} />
+          <Route path="photos" element={<PhotosPage />} />
+          <Route path="archives" element={<ArchivesPage />} />
+          <Route path="music" element={<MusicPage />} />
+          <Route path="about" element={<AboutPage />} />
+          <Route path="post/:slug" element={<ArticlePage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
       </Routes>
     </HashRouter>
   )
 }
 
-function SiteLayout({ children }) {
+function SiteLayout() {
+  const location = useLocation()
+  const reduceMotion = useReducedMotion()
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [theme, setTheme] = useState(readStoredTheme)
+  const [backgroundKey, setBackgroundKey] = useState(readStoredBackground)
+  const [backgroundBlur, setBackgroundBlur] = useState(readStoredBlur)
+  const [effectsEnabled, setEffectsEnabled] = useState(readStoredEffects)
+  const [welcomeVisible, setWelcomeVisible] = useState(shouldShowWelcome)
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    window.localStorage.setItem('lazy-theme', theme)
+  }, [theme])
+
+  useEffect(() => {
+    window.localStorage.setItem('lazy-background', backgroundKey)
+  }, [backgroundKey])
+
+  useEffect(() => {
+    window.localStorage.setItem('lazy-blur', String(backgroundBlur))
+  }, [backgroundBlur])
+
+  useEffect(() => {
+    window.localStorage.setItem('lazy-effects', String(effectsEnabled))
+  }, [effectsEnabled])
+
+  useEffect(() => {
+    if (welcomeVisible) {
+      window.sessionStorage.setItem('lazy-welcome-shown', 'true')
+    }
+  }, [welcomeVisible])
+
+  useEffect(() => {
+    if (!welcomeVisible) {
+      return undefined
+    }
+
+    const timer = window.setTimeout(
+      () => setWelcomeVisible(false),
+      reduceMotion ? 800 : 2600,
+    )
+
+    return () => window.clearTimeout(timer)
+  }, [welcomeVisible, reduceMotion])
+
+  const currentBackground =
+    backgroundOptions.find((item) => item.key === backgroundKey)?.image ||
+    backgroundOptions[0].image
+
   return (
-    <div className="shell">
-      <header className="topbar">
-        <div className="topbar__inner">
-          <span className="topbar__brand">LeDuo Blog</span>
-          <nav className="topbar__nav" aria-label="Top navigation">
-            {topLinks.map((item) => (
-              <NavLink key={item.to} className="topbar__link" to={item.to}>
-                {item.label}
-              </NavLink>
-            ))}
+    <div className="dream-app" style={{ '--background-blur': `${backgroundBlur}px` }}>
+      <DreamBackground
+        image={currentBackground}
+        blur={backgroundBlur}
+        effectsEnabled={effectsEnabled}
+      />
+
+      <AnimatePresence>
+        {welcomeVisible && (
+          <motion.div
+            className="welcome-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0.2 : 0.6 }}
+          >
+            <div className="welcome-overlay__backdrop" />
+            <motion.div
+              className="welcome-overlay__panel"
+              initial={reduceMotion ? false : { opacity: 0, y: 20, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={reduceMotion ? undefined : { opacity: 0, y: -10, scale: 0.98 }}
+              transition={{ duration: reduceMotion ? 0.2 : 0.55 }}
+            >
+              <p className="welcome-overlay__eyebrow">Lazy Sheep Dreamland</p>
+              <h1 className="welcome-overlay__title">懒羊羊の小窝</h1>
+              <p className="welcome-overlay__subtitle">{getGreeting()}</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <header className="floating-nav">
+        <div className="floating-nav__shell">
+          <div className="floating-nav__brand">
+            <span className="floating-nav__brand-title">懒羊羊の小窝</span>
+            <span className="floating-nav__brand-subtitle">Lazy Sheep Dreamland</span>
+          </div>
+
+          <nav className="floating-nav__links" aria-label="Main navigation">
+            {navItems.map((item) => {
+              const Icon = item.icon
+              return (
+                <NavLink key={item.path} className="floating-nav__link" to={item.path} end={item.path === '/'}>
+                  {({ isActive }) => (
+                    <>
+                      <Icon size={18} weight="duotone" />
+                      <span>{item.label}</span>
+                      {isActive && <motion.span layoutId="nav-dot" className="floating-nav__dot" />}
+                    </>
+                  )}
+                </NavLink>
+              )
+            })}
           </nav>
+
+          <div className="floating-nav__actions">
+            <button
+              className="floating-nav__icon-button"
+              type="button"
+              onClick={() => setTheme((currentTheme) => (currentTheme === 'light' ? 'dark' : 'light'))}
+            >
+              {theme === 'light' ? <MoonStars size={18} weight="duotone" /> : <Sun size={18} weight="duotone" />}
+            </button>
+            <button
+              className="floating-nav__icon-button"
+              type="button"
+              onClick={() => setSettingsOpen((open) => !open)}
+            >
+              <GearSix size={18} weight="duotone" />
+            </button>
+            <button
+              className="floating-nav__icon-button floating-nav__icon-button--mobile"
+              type="button"
+              onClick={() => setMobileOpen((open) => !open)}
+            >
+              <List size={18} weight="duotone" />
+            </button>
+          </div>
         </div>
+
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              className="floating-nav__mobile"
+              initial={reduceMotion ? false : { opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduceMotion ? undefined : { opacity: 0, y: -10 }}
+              transition={{ duration: 0.24 }}
+            >
+              {navItems.map((item) => {
+                const Icon = item.icon
+                return (
+                  <NavLink
+                    key={item.path}
+                    className="floating-nav__mobile-link"
+                    to={item.path}
+                    end={item.path === '/'}
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    <Icon size={18} weight="duotone" />
+                    <span>{item.label}</span>
+                  </NavLink>
+                )
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
-      <section className="blog-header">
-        <div className="blog-header__inner">
-          <div>
-            <p className="blog-header__eyebrow">Study Notes</p>
-            <Link className="blog-header__title" to="/">
-              懒羊羊学习小窝
-            </Link>
-            <p className="blog-header__subtitle">
-              一个准备重新开始写内容的个人学习博客，先把前端整理成更像中文技术博客的样子。
-            </p>
-          </div>
-          <div className="blog-header__status">
-            <span>GitHub Pages 在线</span>
-            <span>Markdown 发文已就绪</span>
-          </div>
-        </div>
-      </section>
-
-      <div className="layout">
-        <main className="main-column">{children}</main>
-        <aside className="sidebar">
-          <div className="sidebar-surface">
-            <section className="sidebar-section sidebar-section--profile">
-              <div className="sidebar-profile__visual">
-                <img className="sidebar-profile__avatar" src={lazyGoat} alt="懒羊羊头像" />
+      <AnimatePresence>
+        {settingsOpen && (
+          <motion.aside
+            className="settings-panel"
+            initial={reduceMotion ? false : { opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={reduceMotion ? undefined : { opacity: 0, x: 24 }}
+            transition={{ duration: 0.28 }}
+          >
+            <div className="settings-panel__header">
+              <div>
+                <p className="soft-eyebrow">Dream Settings</p>
+                <h2>小窝设置</h2>
               </div>
-              <div className="sidebar-profile__body">
-                <h2 className="sidebar-title">关于我</h2>
-                <p className="sidebar-text">
-                  这里以后会继续写 reverse、crypto、pwn 和学习复盘。现在先清空旧文章，把博客整理成一个更适合长期写作的起点。
-                </p>
-              </div>
-            </section>
+              <button
+                className="settings-panel__close"
+                type="button"
+                onClick={() => setSettingsOpen(false)}
+              >
+                收起
+              </button>
+            </div>
 
-            <section className="sidebar-section">
-              <h2 className="sidebar-title">公告</h2>
-              <p className="sidebar-text">
-                示例文章已经清空。接下来发布的内容会直接代表这座博客真正的方向。
-              </p>
-            </section>
-
-            <section className="sidebar-section">
-              <h2 className="sidebar-title">当前状态</h2>
-              <ul className="sidebar-list">
-                {siteNotes.map((item) => (
-                  <li key={item}>{item}</li>
+            <div className="settings-panel__group">
+              <span className="settings-panel__label">背景壁纸</span>
+              <div className="background-switch">
+                {backgroundOptions.map((option) => (
+                  <button
+                    key={option.key}
+                    className={`background-switch__button${backgroundKey === option.key ? ' active' : ''}`}
+                    type="button"
+                    onClick={() => setBackgroundKey(option.key)}
+                  >
+                    {option.label}
+                  </button>
                 ))}
-              </ul>
-            </section>
+              </div>
+            </div>
 
-            <section className="sidebar-section">
-              <h2 className="sidebar-title">文章归档</h2>
-              {posts.length > 0 ? (
-                <ul className="sidebar-list">
-                  {posts.map((post) => (
-                    <li key={post.slug}>
-                      <Link className="sidebar-link" to={`/post/${post.slug}`}>
-                        {post.title}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="sidebar-text">暂时还没有可归档的文章。</p>
-              )}
-            </section>
+            <div className="settings-panel__group">
+              <div className="settings-panel__label-row">
+                <span className="settings-panel__label">背景模糊度</span>
+                <span>{backgroundBlur}px</span>
+              </div>
+              <input
+                className="settings-panel__range"
+                type="range"
+                min="12"
+                max="24"
+                step="1"
+                value={backgroundBlur}
+                onChange={(event) => setBackgroundBlur(Number(event.target.value))}
+              />
+            </div>
+
+            <div className="settings-panel__group settings-panel__group--toggle">
+              <div>
+                <span className="settings-panel__label">鼠标特效</span>
+                <p>云朵漂浮和糖屑粒子</p>
+              </div>
+              <button
+                className={`toggle-chip${effectsEnabled ? ' active' : ''}`}
+                type="button"
+                onClick={() => setEffectsEnabled((enabled) => !enabled)}
+              >
+                {effectsEnabled ? '已开启' : '已关闭'}
+              </button>
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
+      <motion.div
+        className="page-frame"
+        key={location.pathname}
+        initial={reduceMotion ? false : { opacity: 0, y: 22 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: reduceMotion ? 0.2 : 0.45 }}
+      >
+        <Outlet />
+      </motion.div>
+
+      <button
+        className="companion-widget"
+        type="button"
+        onClick={() => setSettingsOpen((open) => !open)}
+      >
+        <img className="companion-widget__avatar" src={lazyGoat} alt="懒羊羊陪伴挂件" />
+        <span className="companion-widget__bubble">困困的设置入口</span>
+      </button>
+    </div>
+  )
+}
+
+function DreamBackground({ image, blur, effectsEnabled }) {
+  const particleList = Array.from({ length: 12 }, (_, index) => index)
+
+  return (
+    <div className="dream-background" aria-hidden="true">
+      <div
+        className="dream-background__image"
+        style={{
+          backgroundImage: `url(${image})`,
+          filter: `blur(${blur}px)`,
+        }}
+      />
+      <div className="dream-background__wash" />
+      {effectsEnabled && (
+        <>
+          <div className="dream-background__cloud dream-background__cloud--one" />
+          <div className="dream-background__cloud dream-background__cloud--two" />
+          <div className="dream-background__cloud dream-background__cloud--three" />
+          <div className="dream-background__sparkles">
+            {particleList.map((particle) => (
+              <span
+                key={particle}
+                className="dream-background__sparkle"
+                style={{
+                  left: `${6 + particle * 7.4}%`,
+                  animationDelay: `${particle * 0.35}s`,
+                }}
+              />
+            ))}
           </div>
-        </aside>
-      </div>
+        </>
+      )}
     </div>
   )
 }
 
 function HomePage() {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [activeCategory, setActiveCategory] = useState('全部')
-  const hasPosts = posts.length > 0
-
-  const normalizedQuery = searchQuery.trim().toLowerCase()
-  const filteredPosts = posts.filter((post) => {
-    const matchesCategory =
-      activeCategory === '全部' || post.category === activeCategory
-    const haystack = [
-      post.title,
-      post.excerpt,
-      post.content,
-      post.category,
-      post.tags.join(' '),
-    ]
-      .join(' ')
-      .toLowerCase()
-
-    const matchesQuery =
-      normalizedQuery.length === 0 || haystack.includes(normalizedQuery)
-
-    return matchesCategory && matchesQuery
-  })
+  const articleFeed = useMemo(() => buildArticleFeed(), [])
+  const [searchValue, setSearchValue] = useState('')
 
   return (
-    <div className="page-surface">
-      <section className="surface-section">
-        <div className="post-meta">
-          <span>{formatDate(new Date().toISOString())}</span>
-          <span>置顶公告</span>
-          <span>博客调整中</span>
+    <div className="dashboard">
+      <section className="dashboard__search-shell glass-panel">
+        <div className="dashboard__search-copy">
+          <p className="soft-eyebrow">Home Dashboard</p>
+          <h1 className="dashboard__headline">今天想偷懒看点什么</h1>
         </div>
-        <h1 className="hero-title">旧文章已经清空，前端也准备按更正式的博客风格重新开始。</h1>
-        <p className="lead-text">
-          这个站点现在更像一个认真写作的起点。发布入口、自动部署和文章结构都已经准备好了，接下来只差你写下第一篇真正想留下来的内容。
-        </p>
-        <div className="action-row">
-          <Link className="action-button action-button--primary" to="/publish">
-            查看发文方式
-          </Link>
-          <a
-            className="action-button action-button--secondary"
-            href="https://github.com/yangleduo0629-cloud/-"
-            target="_blank"
-            rel="noreferrer"
-          >
-            打开仓库
-          </a>
-        </div>
+        <label className="dashboard__search" htmlFor="dream-search">
+          <MagnifyingGlass size={22} weight="duotone" />
+          <input
+            id="dream-search"
+            type="search"
+            value={searchValue}
+            onChange={(event) => setSearchValue(event.target.value)}
+            placeholder="输入暗号进入懒羊羊的小窝..."
+          />
+        </label>
       </section>
 
-      <section className="surface-section surface-section--columns">
-        <div>
-          <h2 className="section-title">开始写第一篇文章</h2>
-          <p className="section-text">
-            现在最方便的发文方式是先生成 Markdown 模板，然后直接填标题、摘要和正文。
-          </p>
-        </div>
-        <pre className="code-panel code-panel--block">
-          <code>npm run new-post -- "这里写文章标题"</code>
-        </pre>
-      </section>
-
-      {hasPosts ? (
-        <>
-          <section className="surface-section">
-            <div className="search-header">
-              <div>
-                <h2 className="section-title">文章检索</h2>
-                <p className="section-text">可以按标题、分类、正文关键字和标签筛选。</p>
-              </div>
-              <span className="search-count">当前 {filteredPosts.length} 篇</span>
+      <section className="dashboard__grid">
+        <motion.article
+          className="glass-panel profile-panel"
+          whileHover={{ y: -6, scale: 1.01 }}
+          transition={{ type: 'spring', stiffness: 240, damping: 20 }}
+        >
+          <div className="profile-panel__avatar-ring">
+            <div className="profile-panel__avatar-shell">
+              <img src={lazyGoat} alt="懒羊羊风格头像" />
             </div>
+          </div>
+          <div className="profile-panel__content">
+            <p className="soft-eyebrow">Profile</p>
+            <h2>懒羊羊の小窝</h2>
+            <p>在代码、零食和午睡之间慢慢发光。</p>
+            <div className="profile-panel__stats">
+              <span>文章 {articleFeed.length}</span>
+              <span>说说 {momentGroups.flatMap((group) => group.items).length}</span>
+              <span>照片 {albumCollections.reduce((count, album) => count + album.count, 0)}</span>
+            </div>
+            <div className="profile-panel__socials">
+              <a href="https://github.com/yangleduo0629-cloud/-" target="_blank" rel="noreferrer">
+                <Code size={18} weight="duotone" />
+              </a>
+              <a href="#/music">
+                <Headphones size={18} weight="duotone" />
+              </a>
+              <a href="#/about">
+                <Heart size={18} weight="duotone" />
+              </a>
+            </div>
+          </div>
+        </motion.article>
 
-            <div className="search-controls">
-              <input
-                className="search-input"
-                type="search"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="搜索文章标题、分类或关键字"
+        <MusicPlayerCard />
+
+        <motion.article
+          className="glass-panel photo-preview-panel"
+          whileHover={{ y: -6, scale: 1.01 }}
+          transition={{ type: 'spring', stiffness: 240, damping: 20 }}
+        >
+          <div className="panel-headline">
+            <div>
+              <p className="soft-eyebrow">Photos</p>
+              <h3>照片墙预览</h3>
+            </div>
+            <Link to="/photos">查看全部</Link>
+          </div>
+          <div className="photo-preview-panel__grid">
+            {albumCollections[0].images.slice(0, 4).map((image, index) => (
+              <div
+                key={index}
+                className="photo-preview-panel__tile"
+                style={{ backgroundImage: `url(${image})` }}
               />
-              <div className="tag-row" aria-label="Category filters">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    className={`tag-button${activeCategory === category ? ' active' : ''}`}
-                    type="button"
-                    onClick={() => setActiveCategory(category)}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </section>
+            ))}
+          </div>
+        </motion.article>
 
-          <section className="surface-section">
-            <div className="post-list">
-              {filteredPosts.map((post) => (
-                <article className="post-list__item" key={post.slug}>
-                  <div className="post-meta">
-                    <span>{formatDate(post.publishedAt)}</span>
-                    <span>{post.category}</span>
-                    <span>{estimateReadingMinutes(post.content)} 分钟阅读</span>
+        <motion.article
+          className="glass-panel articles-preview-panel"
+          whileHover={{ y: -6 }}
+          transition={{ type: 'spring', stiffness: 240, damping: 20 }}
+        >
+          <div className="panel-headline">
+            <div>
+              <p className="soft-eyebrow">Latest Articles</p>
+              <h3>最新文章</h3>
+            </div>
+            <Link to="/articles">进入文章页</Link>
+          </div>
+          <div className="articles-preview-panel__list">
+            {articleFeed.slice(0, 3).map((article) => (
+              <div className="articles-preview-panel__item" key={article.title}>
+                <div className="articles-preview-panel__meta">
+                  <span>{article.category}</span>
+                  <span>{article.readTime} 分钟</span>
+                </div>
+                <strong>{article.title}</strong>
+                <p>{article.excerpt}</p>
+              </div>
+            ))}
+          </div>
+        </motion.article>
+
+        <motion.article
+          className="glass-panel moments-preview-panel"
+          whileHover={{ y: -6 }}
+          transition={{ type: 'spring', stiffness: 240, damping: 20 }}
+        >
+          <div className="panel-headline">
+            <div>
+              <p className="soft-eyebrow">Moments</p>
+              <h3>最新说说</h3>
+            </div>
+            <Link to="/moments">去看心情墙</Link>
+          </div>
+          <div className="moments-preview-panel__cards">
+            {momentGroups[0].items.map((moment) => (
+              <div className="moments-preview-panel__card" key={moment.text}>
+                <span>{moment.mood}</span>
+                <p>{moment.text}</p>
+              </div>
+            ))}
+          </div>
+        </motion.article>
+
+        <motion.article
+          className="glass-panel candy-panel"
+          whileHover={{ y: -6 }}
+          transition={{ type: 'spring', stiffness: 240, damping: 20 }}
+        >
+          <div className="panel-headline">
+            <div>
+              <p className="soft-eyebrow">Tiny Notes</p>
+              <h3>趣味小卡片</h3>
+            </div>
+          </div>
+          <div className="candy-panel__chips">
+            <span><Sparkle size={16} weight="fill" /> 今日软糖值 88%</span>
+            <span><FlowerLotus size={16} weight="fill" /> 草地治愈中</span>
+            <span><Bell size={16} weight="fill" /> 铃铛静静响</span>
+            <span><Cloud size={16} weight="fill" /> 云朵抱枕模式</span>
+          </div>
+        </motion.article>
+
+        <UptimePanel />
+      </section>
+    </div>
+  )
+}
+
+function ArticlesPage() {
+  const articleFeed = useMemo(() => buildArticleFeed(), [])
+  const realCategories = posts.length > 0 ? categories : ['全部', '闲聊', '技术', '日常']
+  const [activeCategory, setActiveCategory] = useState('全部')
+  const filteredArticles = articleFeed.filter(
+    (article) => activeCategory === '全部' || article.category === activeCategory,
+  )
+  const reduceMotion = useReducedMotion()
+
+  return (
+    <section className="page-board">
+      <PageHeading
+        title="文章"
+        subtitle="记录技术、生活和偷懒时刻"
+      />
+      <div className="pill-row">
+        {realCategories.map((category) => (
+          <button
+            key={category}
+            className={`pill-button${activeCategory === category ? ' active' : ''}`}
+            type="button"
+            onClick={() => setActiveCategory(category)}
+          >
+            {category}
+          </button>
+        ))}
+      </div>
+      <div className="article-grid">
+        {filteredArticles.map((article) => (
+          <motion.article
+            key={article.title}
+            className="article-cover-card glass-panel"
+            whileHover={
+              reduceMotion
+                ? undefined
+                : { y: -8, rotateX: 2, rotateY: -3, scale: 1.01 }
+            }
+            transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+          >
+            <div
+              className="article-cover-card__cover"
+              style={{ backgroundImage: `url(${article.coverImageUrl})` }}
+            />
+            <div className="article-cover-card__shade" />
+            <div className="article-cover-card__content">
+              <div className="article-cover-card__meta">
+                <span>{formatDate(article.publishedAt)}</span>
+                <span>{article.readTime} 分钟</span>
+                <span>{article.views} 浏览</span>
+                <span>{article.likes} 喜欢</span>
+              </div>
+              {article.previewOnly ? (
+                <h3>{article.title}</h3>
+              ) : (
+                <Link to={`/post/${article.slug}`}>
+                  <h3>{article.title}</h3>
+                </Link>
+              )}
+            </div>
+          </motion.article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function MomentsPage() {
+  return (
+    <section className="page-board">
+      <PageHeading
+        title="说说"
+        subtitle="碎碎念的小心情收纳盒"
+      />
+      <div className="moments-timeline">
+        {momentGroups.map((group) => (
+          <div className="moments-timeline__group" key={group.date}>
+            <div className="moments-timeline__date">
+              <strong>{group.date}</strong>
+              <span />
+            </div>
+            <div className="moments-timeline__stream">
+              {group.items.map((item) => (
+                <motion.article
+                  key={item.text}
+                  className="moment-card glass-panel"
+                  whileHover={{ y: -6, scale: 1.01 }}
+                  transition={{ type: 'spring', stiffness: 240, damping: 18 }}
+                >
+                  <div className="moment-card__mood">{item.mood}</div>
+                  <p>{item.text}</p>
+                  <div className="moment-card__footer">
+                    <Heart size={16} weight="duotone" />
+                    <span>{item.likes}</span>
                   </div>
-                  <h2 className="post-list__title">
-                    <Link className="post-list__link" to={`/post/${post.slug}`}>
-                      {post.title}
-                    </Link>
-                  </h2>
-                  <p className="post-list__excerpt">{post.excerpt}</p>
-                  {post.tags.length > 0 && (
-                    <div className="tag-row">
-                      {post.tags.map((tag) => (
-                        <span className="post-tag" key={tag}>
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </article>
+                </motion.article>
               ))}
             </div>
-          </section>
-        </>
-      ) : (
-        <section className="surface-section">
-          <div className="post-meta">
-            <span>当前文章数 0</span>
-            <span>等待新内容</span>
           </div>
-          <h2 className="section-title">暂时还没有发布文章。</h2>
-          <p className="section-text">
-            这是现在最重要的空状态。等你发布第一篇 Markdown 文章后，这里会自动变成真正的文章列表。
-          </p>
-          <ol className="steps-list">
-            {publishFlow.map((item) => (
-              <li key={item.title}>
-                <strong>{item.title}</strong>
-                <span>{item.text}</span>
-              </li>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function GuestbookPage() {
+  return (
+    <section className="page-board">
+      <PageHeading title="留言" subtitle="像云朵便签一样的来访留言板" />
+      <div className="guestbook-grid">
+        {guestbookNotes.map((note) => (
+          <motion.article
+            key={note.name}
+            className="glass-panel guest-note"
+            whileHover={{ y: -5, rotate: -1 }}
+            transition={{ type: 'spring', stiffness: 220, damping: 16 }}
+          >
+            <strong>{note.name}</strong>
+            <p>{note.text}</p>
+          </motion.article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function NovelsPage() {
+  return (
+    <section className="page-board">
+      <PageHeading title="小说" subtitle="写在云朵和零食之间的小故事草稿箱" />
+      <div className="story-list glass-panel">
+        {novelChapters.map((chapter) => (
+          <div className="story-list__item" key={chapter.title}>
+            <div>
+              <strong>{chapter.title}</strong>
+              <p>{chapter.desc}</p>
+            </div>
+            <span>{chapter.meta}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function FavoritesPage() {
+  return (
+    <section className="page-board">
+      <PageHeading title="收藏夹" subtitle="把喜欢的东西都装进软软的口袋里" />
+      <div className="favorite-cloud glass-panel">
+        {favoriteEntries.map((entry) => (
+          <span key={entry}>{entry}</span>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function ProjectsPage() {
+  return (
+    <section className="page-board">
+      <PageHeading title="项目" subtitle="慢慢发光的小计划和正在酝酿的点子" />
+      <div className="project-grid">
+        {projectEntries.map((project) => (
+          <motion.article
+            key={project.title}
+            className="glass-panel project-card"
+            whileHover={{ y: -6 }}
+            transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+          >
+            <div className="project-card__state">{project.state}</div>
+            <h3>{project.title}</h3>
+            <p>{project.desc}</p>
+          </motion.article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function FriendsPage() {
+  return (
+    <section className="page-board">
+      <PageHeading title="友链" subtitle="以后会把温柔又认真写博客的人挂在这里" />
+      <div className="friend-grid">
+        {friendEntries.map((friend) => (
+          <motion.article
+            key={friend.name}
+            className="glass-panel friend-card"
+            whileHover={{ y: -6, scale: 1.01 }}
+            transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+          >
+            <Handshake size={22} weight="duotone" />
+            <strong>{friend.name}</strong>
+            <p>{friend.desc}</p>
+          </motion.article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function PhotosPage() {
+  const [selectedAlbum, setSelectedAlbum] = useState(null)
+  const reduceMotion = useReducedMotion()
+
+  return (
+    <section className="page-board">
+      <PageHeading title="照片墙" subtitle="像零食贴纸本一样的懒羊羊相册" />
+      <div className="album-grid">
+        {albumCollections.map((album) => (
+          <motion.button
+            key={album.title}
+            className="album-card"
+            type="button"
+            whileHover={reduceMotion ? undefined : { y: -8, scale: 1.01 }}
+            transition={{ type: 'spring', stiffness: 240, damping: 18 }}
+            onClick={() => setSelectedAlbum(album)}
+          >
+            <div className="album-card__stack">
+              {album.stack.map((image, index) => (
+                <span
+                  key={`${album.title}-${index}`}
+                  className={`album-card__photo layer-${index + 1}`}
+                  style={{ backgroundImage: `url(${image})` }}
+                />
+              ))}
+            </div>
+            <div className="album-card__body">
+              <strong>{album.title}</strong>
+              <p>{album.caption}</p>
+            </div>
+            <span className="album-card__badge">{album.count} 张</span>
+          </motion.button>
+        ))}
+      </div>
+
+      <AnimatePresence>
+        {selectedAlbum && (
+          <motion.div
+            className="lightbox"
+            initial={reduceMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={reduceMotion ? undefined : { opacity: 0 }}
+          >
+            <button
+              className="lightbox__backdrop"
+              type="button"
+              onClick={() => setSelectedAlbum(null)}
+            />
+            <motion.div
+              className="lightbox__panel glass-panel"
+              initial={reduceMotion ? false : { opacity: 0, y: 24, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={reduceMotion ? undefined : { opacity: 0, y: 18, scale: 0.98 }}
+            >
+              <div className="lightbox__header">
+                <div>
+                  <p className="soft-eyebrow">Album</p>
+                  <h3>{selectedAlbum.title}</h3>
+                </div>
+                <button type="button" onClick={() => setSelectedAlbum(null)}>
+                  关闭
+                </button>
+              </div>
+              <div className="lightbox__grid">
+                {selectedAlbum.images.map((image, index) => (
+                  <div
+                    key={index}
+                    className="lightbox__image"
+                    style={{ backgroundImage: `url(${image})` }}
+                  />
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </section>
+  )
+}
+
+function ArchivesPage() {
+  return (
+    <section className="page-board">
+      <PageHeading title="归档" subtitle="在草地上的时间河流里翻看慢慢积累的记忆" />
+      <div className="archive-river">
+        <div className="archive-river__line" />
+        <div className="archive-river__track">
+          {archiveNodes.map((node) => (
+            <div className={`archive-node ${node.align}`} key={node.year}>
+              <div className="archive-node__dot" />
+              <article className="glass-panel archive-node__card">
+                <span>{node.year}</span>
+                <strong>{node.title}</strong>
+                <p>{node.text}</p>
+              </article>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function MusicPage() {
+  return (
+    <section className="page-board">
+      <PageHeading title="音乐" subtitle="夜里抱着零食偷偷听歌的小小情绪板" />
+      <div className="music-board">
+        <MusicPlayerCard expanded />
+        <div className="glass-panel playlist-panel">
+          <div className="panel-headline">
+            <div>
+              <p className="soft-eyebrow">Playlist</p>
+              <h3>糖纸歌单</h3>
+            </div>
+          </div>
+          <div className="playlist-panel__list">
+            {playlist.map((track) => (
+              <div className="playlist-panel__item" key={track.title}>
+                <img src={track.cover} alt={track.title} />
+                <div>
+                  <strong>{track.title}</strong>
+                  <p>{track.artist}</p>
+                </div>
+              </div>
             ))}
-          </ol>
-        </section>
-      )}
-    </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function AboutPage() {
+  return (
+    <section className="page-board">
+      <PageHeading title="关于" subtitle="一个藏在草地和云朵里的梦幻小窝" />
+      <div className="about-layout">
+        <article className="glass-panel about-card">
+          <p className="soft-eyebrow">Profile</p>
+          <h3>懒羊羊主题的高质感二次元博客</h3>
+          <p>
+            这里不想做成普通儿童站，也不想只是贴一堆卡通元素。我更想把懒羊羊的柔软、慵懒、治愈和一点点偷懒的浪漫，收成一个能长期写东西的小窝。
+          </p>
+        </article>
+        <article className="glass-panel about-card">
+          <p className="soft-eyebrow">Now</p>
+          <h3>目前状态</h3>
+          <p>
+            首页、文章、说说、照片墙、归档、音乐和设置面板都已经准备好。等第一篇真实文章上线以后，这个页面会更完整。
+          </p>
+        </article>
+      </div>
+    </section>
   )
 }
 
@@ -346,187 +1161,116 @@ function ArticlePage() {
   const createHeadingId = createHeadingIdFactory()
 
   return (
-    <article className="page-surface">
-      <section className="surface-section">
-        <Link className="back-link" to="/">
-          返回首页
-        </Link>
-        <div className="post-meta">
+    <section className="page-board">
+      <article className="glass-panel article-detail">
+        <div className="article-detail__meta">
           <span>{formatDate(post.publishedAt)}</span>
           <span>{post.category}</span>
           <span>{estimateReadingMinutes(post.content)} 分钟阅读</span>
         </div>
-        <h1 className="hero-title">{post.title}</h1>
-        <p className="lead-text">{post.excerpt}</p>
-        {post.tags.length > 0 && (
-          <div className="tag-row">
-            {post.tags.map((tag) => (
-              <span className="post-tag" key={tag}>
-                {tag}
-              </span>
-            ))}
+        <h1 className="article-detail__title">{post.title}</h1>
+        <p className="article-detail__excerpt">{post.excerpt}</p>
+        <div className="article-detail__layout">
+          <div className="article-detail__body markdown-body">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                h2({ children }) {
+                  const text = getTextContent(children)
+                  const id = createHeadingId(text)
+                  return <h2 id={id}>{children}</h2>
+                },
+                h3({ children }) {
+                  const text = getTextContent(children)
+                  const id = createHeadingId(text)
+                  return <h3 id={id}>{children}</h3>
+                },
+                a({ href, children }) {
+                  const isExternal = typeof href === 'string' && /^https?:\/\//i.test(href)
+                  return (
+                    <a
+                      className="markdown-link"
+                      href={href}
+                      rel={isExternal ? 'noreferrer' : undefined}
+                      target={isExternal ? '_blank' : undefined}
+                    >
+                      {children}
+                    </a>
+                  )
+                },
+                blockquote({ children }) {
+                  return <blockquote className="markdown-quote">{children}</blockquote>
+                },
+                code({ className, children }) {
+                  const codeText = String(children).replace(/\n$/, '')
+                  const isBlock = Boolean(className)
+
+                  if (!isBlock) {
+                    return <code className="inline-code">{codeText}</code>
+                  }
+
+                  return (
+                    <pre className="code-panel code-panel--block">
+                      <code>{codeText}</code>
+                    </pre>
+                  )
+                },
+              }}
+            >
+              {post.content}
+            </ReactMarkdown>
           </div>
-        )}
-      </section>
+          <aside className="article-detail__rail">
+            <div className="article-detail__toc glass-panel">
+              <p className="soft-eyebrow">Article Guide</p>
+              <h3>文章目录</h3>
+              {headings.length > 0 ? (
+                <ul className="toc-list">
+                  {headings.map((heading) => (
+                    <li className={`toc-list__item depth-${heading.depth}`} key={heading.id}>
+                      <button
+                        className="toc-button"
+                        type="button"
+                        onClick={() => scrollToHeading(heading.id)}
+                      >
+                        {heading.text}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="sidebar-text">这篇文章还没有分节标题。</p>
+              )}
+            </div>
+          </aside>
+        </div>
 
-      {post.coverImageUrl && (
-        <section className="surface-section">
-          <div className="article-cover">
-            <img className="article-cover__image" src={post.coverImageUrl} alt={post.title} />
-          </div>
-        </section>
-      )}
-
-      {headings.length > 0 && (
-        <section className="surface-section">
-          <h2 className="section-title">文章目录</h2>
-          <ul className="toc-list">
-            {headings.map((heading) => (
-              <li className={`toc-list__item depth-${heading.depth}`} key={heading.id}>
-                <button
-                  className="toc-button"
-                  type="button"
-                  onClick={() => scrollToHeading(heading.id)}
-                >
-                  {heading.text}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section className="surface-section markdown-body">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          components={{
-            h2({ children }) {
-              const text = getTextContent(children)
-              const id = createHeadingId(text)
-              return <h2 id={id}>{children}</h2>
-            },
-            h3({ children }) {
-              const text = getTextContent(children)
-              const id = createHeadingId(text)
-              return <h3 id={id}>{children}</h3>
-            },
-            a({ href, children }) {
-              const isExternal = typeof href === 'string' && /^https?:\/\//i.test(href)
-              return (
-                <a
-                  className="markdown-link"
-                  href={href}
-                  rel={isExternal ? 'noreferrer' : undefined}
-                  target={isExternal ? '_blank' : undefined}
-                >
-                  {children}
-                </a>
-              )
-            },
-            blockquote({ children }) {
-              return <blockquote className="markdown-quote">{children}</blockquote>
-            },
-            code({ className, children }) {
-              const codeText = String(children).replace(/\n$/, '')
-              const isBlock = Boolean(className)
-
-              if (!isBlock) {
-                return <code className="inline-code">{codeText}</code>
-              }
-
-              return (
-                <pre className="code-panel code-panel--block">
-                  <code>{codeText}</code>
-                </pre>
-              )
-            },
-          }}
-        >
-          {post.content}
-        </ReactMarkdown>
-      </section>
-
-      <section className="surface-section">
-        <div className="article-nav">
+        <div className="article-nav-row">
           {previousPost ? (
-            <Link className="article-nav__link" to={`/post/${previousPost.slug}`}>
+            <Link className="article-nav-row__item" to={`/post/${previousPost.slug}`}>
               <span>上一篇</span>
               <strong>{previousPost.title}</strong>
             </Link>
           ) : (
-            <div className="article-nav__link article-nav__link--muted">
+            <div className="article-nav-row__item muted">
               <span>上一篇</span>
               <strong>已经是最新一篇了</strong>
             </div>
           )}
-
           {nextPost ? (
-            <Link className="article-nav__link" to={`/post/${nextPost.slug}`}>
+            <Link className="article-nav-row__item" to={`/post/${nextPost.slug}`}>
               <span>下一篇</span>
               <strong>{nextPost.title}</strong>
             </Link>
           ) : (
-            <div className="article-nav__link article-nav__link--muted">
+            <div className="article-nav-row__item muted">
               <span>下一篇</span>
               <strong>已经到底了</strong>
             </div>
           )}
         </div>
-      </section>
-    </article>
-  )
-}
-
-function PublishGuidePage() {
-  return (
-    <article className="page-surface">
-      <section className="surface-section">
-        <div className="post-meta">
-          <span>发布指南</span>
-          <span>GitHub Pages</span>
-        </div>
-        <h1 className="hero-title">改 Markdown 文件，再让 GitHub Pages 自动更新</h1>
-        <p className="lead-text">
-          现在站点已经清空文章，正适合从第一篇正式内容开始。发文流程很轻，而且和现在的静态博客结构是完全配套的。
-        </p>
-      </section>
-
-      <section className="surface-section">
-        <h2 className="section-title">快速开始</h2>
-        <pre className="code-panel code-panel--block">
-          <code>npm run new-post -- "这里写文章标题"</code>
-        </pre>
-      </section>
-
-      <section className="surface-section">
-        <div className="guide-grid">
-          {publishFlow.map((item) => (
-            <article className="guide-grid__item" key={item.title}>
-              <h3>{item.title}</h3>
-              <p>{item.text}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="surface-section">
-        <h2 className="section-title">发文检查</h2>
-        <ul className="steps-list">
-          {publishChecklist.map((item) => (
-            <li key={item}>
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="surface-section">
-        <h2 className="section-title">文章模板</h2>
-        <pre className="code-panel code-panel--block">
-          <code>{articleTemplate}</code>
-        </pre>
-      </section>
-    </article>
+      </article>
+    </section>
   )
 }
 
@@ -534,27 +1278,155 @@ function NotFoundPage() {
   const navigate = useNavigate()
 
   return (
-    <article className="page-surface">
-      <section className="surface-section">
-        <div className="post-meta">
-          <span>404</span>
-          <span>页面未找到</span>
-        </div>
-        <h1 className="hero-title">这个页面暂时没有找到。</h1>
-        <p className="lead-text">
-          旧文章已经清空了，所以如果你是从旧链接点进来的，现在更适合回到首页或直接去发布第一篇新文章。
-        </p>
+    <section className="page-board">
+      <article className="glass-panel not-found-panel">
+        <p className="soft-eyebrow">Lost Cloud</p>
+        <h1>这里暂时还没有门牌号</h1>
+        <p>像在云朵堆里迷路了一样。先回首页休息一下，或者去发第一篇文章。</p>
         <div className="action-row">
           <button className="action-button action-button--primary" type="button" onClick={() => navigate('/')}>
             回到首页
           </button>
           <Link className="action-button action-button--secondary" to="/publish">
-            查看发布方法
+            去看发布指南
           </Link>
         </div>
-      </section>
-    </article>
+      </article>
+    </section>
   )
 }
 
-export default App
+function PageHeading({ title, subtitle }) {
+  return (
+    <div className="page-heading">
+      <p className="soft-eyebrow">Dream Section</p>
+      <h1>{title}</h1>
+      <p>{subtitle}</p>
+    </div>
+  )
+}
+
+function MusicPlayerCard({ expanded = false }) {
+  const reduceMotion = useReducedMotion()
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [trackIndex, setTrackIndex] = useState(0)
+  const [progress, setProgress] = useState(0.26)
+  const track = playlist[trackIndex]
+
+  useEffect(() => {
+    if (!isPlaying) {
+      return undefined
+    }
+
+    const timer = window.setInterval(() => {
+      setProgress((currentProgress) => {
+        if (currentProgress >= 0.98) {
+          return 0.14
+        }
+        return currentProgress + 0.01
+      })
+    }, reduceMotion ? 800 : 420)
+
+    return () => window.clearInterval(timer)
+  }, [isPlaying, reduceMotion])
+
+  function toggleTrack() {
+    setIsPlaying((playing) => !playing)
+  }
+
+  function nextTrack() {
+    setTrackIndex((index) => (index + 1) % playlist.length)
+    setProgress(0.12)
+  }
+
+  return (
+    <motion.article
+      className={`glass-panel music-card${expanded ? ' music-card--expanded' : ''}`}
+      whileHover={reduceMotion ? undefined : { y: -6, scale: 1.01 }}
+      transition={{ type: 'spring', stiffness: 240, damping: 20 }}
+    >
+      <div className="panel-headline">
+        <div>
+          <p className="soft-eyebrow">Music</p>
+          <h3>糖果随身听</h3>
+        </div>
+        <button className="music-card__next" type="button" onClick={nextTrack}>
+          下一首
+        </button>
+      </div>
+
+      <div className="music-card__body">
+        <div
+          className="music-card__cover"
+          style={{ backgroundImage: `url(${track.cover})` }}
+        />
+        <div className="music-card__info">
+          <strong>{track.title}</strong>
+          <p>{track.artist}</p>
+          <div className="music-card__progress">
+            <span style={{ width: `${progress * 100}%` }} />
+          </div>
+          <div className="music-card__controls">
+            <button type="button" onClick={toggleTrack}>
+              {isPlaying ? (
+                <PauseCircle size={34} weight="duotone" />
+              ) : (
+                <PlayCircle size={34} weight="duotone" />
+              )}
+            </button>
+            <div className="music-card__meta">
+              <Waveform size={18} weight="duotone" />
+              <span>{isPlaying ? '夜里抱着零食偷偷听歌' : '按下播放，开始发呆'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="music-card__lyrics">
+        “今天的风很软，适合在代码和午睡之间慢慢听完这一首歌。”
+      </div>
+    </motion.article>
+  )
+}
+
+function UptimePanel() {
+  const launchedAt = new Date('2026-06-21T00:00:00Z').getTime()
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  const elapsed = now - launchedAt
+  const days = Math.max(0, Math.floor(elapsed / (1000 * 60 * 60 * 24)))
+  const hours = Math.max(0, Math.floor((elapsed / (1000 * 60 * 60)) % 24))
+  const minutes = Math.max(0, Math.floor((elapsed / (1000 * 60)) % 60))
+  const timeText = new Intl.DateTimeFormat('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(now)
+
+  return (
+    <motion.article
+      className="glass-panel uptime-panel"
+      whileHover={{ y: -6 }}
+      transition={{ type: 'spring', stiffness: 240, damping: 20 }}
+    >
+      <div className="uptime-panel__clock">
+        <ClockCountdown size={24} weight="duotone" />
+        <strong>{timeText}</strong>
+      </div>
+      <div className="uptime-panel__body">
+        <p className="soft-eyebrow">Status Board</p>
+        <h3>站点运行状态</h3>
+        <div className="uptime-panel__stats">
+          <span>已运行 {days} 天 {hours} 小时 {minutes} 分钟</span>
+          <span>ICP备案 软绵绵准备中</span>
+          <span>Pages 状态 稳定在线</span>
+        </div>
+      </div>
+    </motion.article>
+  )
+}
