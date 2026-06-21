@@ -793,6 +793,33 @@
   place-content: center;
 }
 
+.filter-group {
+  display: grid;
+  gap: 12px;
+}
+
+.post-tag.active {
+  background: linear-gradient(135deg, var(--accent-cream), var(--accent-sky));
+  color: #5a463a;
+  border-color: transparent;
+}
+
+.content-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.taxonomy-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.taxonomy-panel h3 {
+  margin: 0;
+  color: var(--heading);
+}
+
 .moments-preview-panel__cards {
   display: grid;
   gap: 14px;
@@ -1799,6 +1826,7 @@
   .dashboard__grid,
   .article-grid,
   .album-grid,
+  .content-overview-grid,
   .guestbook-grid,
   .project-grid,
   .friend-grid,

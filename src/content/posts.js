@@ -174,3 +174,34 @@ export const categories = [
   '全部',
   ...new Set(posts.map((post) => post.category)),
 ]
+
+export const tagGroups = Array.from(
+  posts.reduce((groups, post) => {
+    post.tags.forEach((tag) => {
+      groups.set(tag, (groups.get(tag) || 0) + 1)
+    })
+    return groups
+  }, new Map()),
+  ([label, count]) => ({ label, count }),
+).sort((left, right) => right.count - left.count || left.label.localeCompare(right.label, 'zh-CN'))
+
+export const seriesGroups = Array.from(
+  posts.reduce((groups, post) => {
+    if (post.series) {
+      groups.set(post.series, (groups.get(post.series) || 0) + 1)
+    }
+    return groups
+  }, new Map()),
+  ([label, count]) => ({ label, count }),
+).sort((left, right) => right.count - left.count || left.label.localeCompare(right.label, 'zh-CN'))
+
+export const yearGroups = Array.from(
+  posts.reduce((groups, post) => {
+    const year = String(post.publishedAt || '').slice(0, 4)
+    if (year) {
+      groups.set(year, (groups.get(year) || 0) + 1)
+    }
+    return groups
+  }, new Map()),
+  ([label, count]) => ({ label, count }),
+).sort((left, right) => Number(right.label) - Number(left.label))

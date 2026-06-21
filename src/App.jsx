@@ -39,6 +39,7 @@ import {
   useLocation,
   useNavigate,
   useParams,
+  useSearchParams,
 } from 'react-router-dom'
 import './App.css'
 import lazyGoat from './assets/lazy-goat.jpg'
@@ -47,7 +48,14 @@ import {
   publishChecklist,
   publishFlow,
 } from './content/guide'
-import { categories, posts, resolveContentAsset } from './content/posts'
+import {
+  categories,
+  posts,
+  resolveContentAsset,
+  seriesGroups,
+  tagGroups,
+  yearGroups,
+} from './content/posts'
 import {
   albumCollections,
   archiveNodes,
@@ -812,12 +820,32 @@ function HomePage() {
 
 function ArticlesPage() {
   const articleFeed = useMemo(() => buildArticleFeed(), [])
+  const [searchParams, setSearchParams] = useSearchParams()
   const realCategories = posts.length > 0 ? categories : ['全部']
-  const [activeCategory, setActiveCategory] = useState('全部')
-  const filteredArticles = articleFeed.filter(
-    (article) => activeCategory === '全部' || article.category === activeCategory,
-  )
+  const activeCategory = searchParams.get('category') || '全部'
+  const activeTag = searchParams.get('tag') || '全部'
+  const activeYear = searchParams.get('year') || '全部'
+  const activeSeries = searchParams.get('series') || '全部'
+  const filteredArticles = articleFeed.filter((article) => {
+    const matchesCategory = activeCategory === '全部' || article.category === activeCategory
+    const matchesTag = activeTag === '全部' || article.tags.includes(activeTag)
+    const matchesYear =
+      activeYear === '全部' || String(article.publishedAt || '').startsWith(activeYear)
+    const matchesSeries = activeSeries === '全部' || article.series === activeSeries
+
+    return matchesCategory && matchesTag && matchesYear && matchesSeries
+  })
   const reduceMotion = useReducedMotion()
+
+  function updateArticleFilter(key, value) {
+    const nextParams = new URLSearchParams(searchParams)
+    if (value === '全部') {
+      nextParams.delete(key)
+    } else {
+      nextParams.set(key, value)
+    }
+    setSearchParams(nextParams, { replace: true })
+  }
 
   return (
     <section className="page-board">
@@ -831,12 +859,90 @@ function ArticlesPage() {
             key={category}
             className={`pill-button${activeCategory === category ? ' active' : ''}`}
             type="button"
-            onClick={() => setActiveCategory(category)}
+            onClick={() => updateArticleFilter('category', category)}
           >
             {category}
           </button>
         ))}
       </div>
+      {tagGroups.length > 0 && (
+        <div className="filter-group">
+          <p className="soft-eyebrow">标签筛选</p>
+          <div className="tag-row">
+            <button
+              className={`post-tag${activeTag === '全部' ? ' active' : ''}`}
+              type="button"
+              onClick={() => updateArticleFilter('tag', '全部')}
+            >
+              全部标签
+            </button>
+            {tagGroups.map((tag) => (
+              <button
+                className={`post-tag${activeTag === tag.label ? ' active' : ''}`}
+                key={tag.label}
+                type="button"
+                onClick={() => updateArticleFilter('tag', tag.label)}
+              >
+                {tag.label} {tag.count}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {(yearGroups.length > 0 || seriesGroups.length > 0) && (
+        <div className="content-overview-grid">
+          {yearGroups.length > 0 && (
+            <article className="glass-panel taxonomy-panel">
+              <p className="soft-eyebrow">年份浏览</p>
+              <h3>按年份查看</h3>
+              <div className="tag-row">
+                <button
+                  className={`post-tag${activeYear === '全部' ? ' active' : ''}`}
+                  type="button"
+                  onClick={() => updateArticleFilter('year', '全部')}
+                >
+                  全部年份
+                </button>
+                {yearGroups.map((year) => (
+                  <button
+                    className={`post-tag${activeYear === year.label ? ' active' : ''}`}
+                    key={year.label}
+                    type="button"
+                    onClick={() => updateArticleFilter('year', year.label)}
+                  >
+                    {year.label} {year.count}
+                  </button>
+                ))}
+              </div>
+            </article>
+          )}
+          {seriesGroups.length > 0 && (
+            <article className="glass-panel taxonomy-panel">
+              <p className="soft-eyebrow">系列浏览</p>
+              <h3>按系列查看</h3>
+              <div className="tag-row">
+                <button
+                  className={`post-tag${activeSeries === '全部' ? ' active' : ''}`}
+                  type="button"
+                  onClick={() => updateArticleFilter('series', '全部')}
+                >
+                  全部系列
+                </button>
+                {seriesGroups.map((series) => (
+                  <button
+                    className={`post-tag${activeSeries === series.label ? ' active' : ''}`}
+                    key={series.label}
+                    type="button"
+                    onClick={() => updateArticleFilter('series', series.label)}
+                  >
+                    {series.label} {series.count}
+                  </button>
+                ))}
+              </div>
+            </article>
+          )}
+        </div>
+      )}
       {filteredArticles.length > 0 ? (
         <div className="article-grid">
           {filteredArticles.map((article) => (
@@ -1331,10 +1437,29 @@ function PhotosPage() {
 }
 
 function ArchivesPage() {
+  const dynamicArchiveNodes = useMemo(() => {
+    if (posts.length === 0) {
+      return []
+    }
+
+    return yearGroups.map((year, index) => {
+      const yearPosts = posts
+        .filter((post) => String(post.publishedAt || '').startsWith(year.label))
+        .slice(0, 3)
+
+      return {
+        year: year.label,
+        title: `${year.count} 篇文章`,
+        text: yearPosts.map((post) => post.title).join(' / '),
+        align: index % 2 === 0 ? 'top' : 'bottom',
+      }
+    })
+  }, [])
+
   return (
     <section className="page-board">
       <PageHeading title="归档" subtitle="在草地上的时间河流里翻看慢慢积累的记忆" />
-      <ArchiveRiverBoard />
+      <ArchiveRiverBoard nodes={dynamicArchiveNodes.length > 0 ? dynamicArchiveNodes : archiveNodes} />
     </section>
   )
 }
@@ -1647,7 +1772,7 @@ function NotFoundPage() {
   )
 }
 
-function ArchiveRiverBoard() {
+function ArchiveRiverBoard({ nodes }) {
   const viewportRef = useRef(null)
   const dragStateRef = useRef({
     active: false,
@@ -1715,7 +1840,7 @@ function ArchiveRiverBoard() {
       >
         <div className="archive-river__line" />
         <div className="archive-river__track">
-          {archiveNodes.map((node) => (
+          {nodes.map((node) => (
             <div className={`archive-node ${node.align}`} key={node.year}>
               <div className="archive-node__dot" />
               <article className="glass-panel archive-node__card">
