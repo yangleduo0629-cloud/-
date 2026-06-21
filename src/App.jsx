@@ -53,6 +53,9 @@ import './App.css'
 import dreamBgDay from './assets/dream-bg-day.webp'
 import dreamBgSunset from './assets/dream-bg-sunset.webp'
 import lazyGoat from './assets/lazy-goat.jpg'
+import sheepTrackCloud from './assets/sheep-track-cloud.wav'
+import sheepTrackDaydream from './assets/sheep-track-daydream.wav'
+import sheepTrackNaptime from './assets/sheep-track-naptime.wav'
 import {
   articleTemplate,
   publishChecklist,
@@ -85,45 +88,6 @@ const navItems = [
 const backgroundOptions = [
   { key: 'day', label: '午后草地', image: dreamBgDay },
   { key: 'sunset', label: '云朵黄昏', image: dreamBgSunset },
-]
-
-const previewArticles = [
-  {
-    slug: '',
-    title: '草地边的第一篇逆向记录',
-    excerpt: '当正式文章还没写下时，这里先放一张带着点心和云朵气味的封面卡。',
-    category: '技术',
-    publishedAt: '2026-06-21',
-    coverImageUrl: dreamBgDay,
-    views: 238,
-    likes: 31,
-    readTime: 6,
-    previewOnly: true,
-  },
-  {
-    slug: '',
-    title: '懒洋洋的碎碎念和夜里听歌时刻',
-    excerpt: '像抱着抱枕记录心情一样，把说说和灵感写成柔软的小卡片。',
-    category: '闲聊',
-    publishedAt: '2026-06-20',
-    coverImageUrl: dreamBgSunset,
-    views: 172,
-    likes: 24,
-    readTime: 4,
-    previewOnly: true,
-  },
-  {
-    slug: '',
-    title: '午睡之前想写下的学习备忘',
-    excerpt: '封面、渐变、时间、阅读量都已经准备好，只差真实内容慢慢填进来。',
-    category: '日常',
-    publishedAt: '2026-06-19',
-    coverImageUrl: lazyGoat,
-    views: 149,
-    likes: 19,
-    readTime: 5,
-    previewOnly: true,
-  },
 ]
 
 const momentGroups = [
@@ -227,9 +191,27 @@ const friendEntries = [
 ]
 
 const playlist = [
-  { title: '午后发呆练习曲', artist: 'Lazy Sheep FM', cover: dreamBgDay },
-  { title: '云层里的糖纸回响', artist: 'Dreamland Radio', cover: dreamBgSunset },
-  { title: '抱着枕头听的歌', artist: 'Soft Wool Beats', cover: lazyGoat },
+  {
+    title: '午后发呆练习曲',
+    artist: 'Lazy Sheep FM',
+    cover: dreamBgDay,
+    src: sheepTrackDaydream,
+    lyric: '今天的风很软，适合在代码和午睡之间慢慢听完这一首歌。',
+  },
+  {
+    title: '云层里的糖纸回响',
+    artist: 'Dreamland Radio',
+    cover: dreamBgSunset,
+    src: sheepTrackCloud,
+    lyric: '像把傍晚的云朵和一点点甜味一起装进耳机里，慢慢听就好了。',
+  },
+  {
+    title: '抱着枕头听的歌',
+    artist: 'Soft Wool Beats',
+    cover: lazyGoat,
+    src: sheepTrackNaptime,
+    lyric: '适合困困的时候放着循环，像给整个页面盖上一层很轻的梦。',
+  },
 ]
 
 function getGreeting() {
@@ -267,10 +249,6 @@ function scrollToHeading(id) {
 }
 
 function buildArticleFeed() {
-  if (posts.length === 0) {
-    return previewArticles
-  }
-
   return posts.map((post, index) => ({
     ...post,
     coverImageUrl:
@@ -278,7 +256,6 @@ function buildArticleFeed() {
     views: 140 + index * 26,
     likes: 18 + index * 7,
     readTime: estimateReadingMinutes(post.content),
-    previewOnly: false,
   }))
 }
 
@@ -804,7 +781,7 @@ function HomePage() {
               <Link
                 key={article.title}
                 className="dashboard__suggestion"
-                to={article.previewOnly ? '/articles' : `/post/${article.slug}`}
+                to={`/post/${article.slug}`}
               >
                 <strong>{article.title}</strong>
                 <span>{article.category}</span>
@@ -886,16 +863,30 @@ function HomePage() {
             <Link to="/articles">进入文章页</Link>
           </div>
           <div className="articles-preview-panel__list">
-            {articleFeed.slice(0, 3).map((article) => (
-              <div className="articles-preview-panel__item" key={article.title}>
-                <div className="articles-preview-panel__meta">
-                  <span>{article.category}</span>
-                  <span>{article.readTime} 分钟</span>
-                </div>
-                <strong>{article.title}</strong>
-                <p>{article.excerpt}</p>
+            {articleFeed.length > 0 ? (
+              articleFeed.slice(0, 3).map((article) => (
+                <Link
+                  className="articles-preview-panel__item articles-preview-panel__item-link"
+                  key={article.title}
+                  to={`/post/${article.slug}`}
+                >
+                  <div className="articles-preview-panel__meta">
+                    <span>{article.category}</span>
+                    <span>{article.readTime} 分钟</span>
+                  </div>
+                  <strong>{article.title}</strong>
+                  <p>{article.excerpt}</p>
+                </Link>
+              ))
+            ) : (
+              <div className="empty-state">
+                <strong>还没有文章</strong>
+                <p>占位文章已经移除了。等你上传第一篇 Markdown，这里就会自动出现。</p>
+                <Link className="action-button action-button--secondary" to="/publish">
+                  去看发布指南
+                </Link>
               </div>
-            ))}
+            )}
           </div>
         </motion.article>
 
@@ -948,7 +939,7 @@ function HomePage() {
 
 function ArticlesPage() {
   const articleFeed = useMemo(() => buildArticleFeed(), [])
-  const realCategories = posts.length > 0 ? categories : ['全部', '闲聊', '技术', '日常']
+  const realCategories = posts.length > 0 ? categories : ['全部']
   const [activeCategory, setActiveCategory] = useState('全部')
   const filteredArticles = articleFeed.filter(
     (article) => activeCategory === '全部' || article.category === activeCategory,
@@ -973,38 +964,44 @@ function ArticlesPage() {
           </button>
         ))}
       </div>
-      <div className="article-grid">
-        {filteredArticles.map((article) => (
-          <motion.article
-            key={article.title}
-            className="article-cover-card glass-panel"
-            transition={{ type: 'spring', stiffness: 220, damping: 18 }}
-            onPointerMove={reduceMotion ? undefined : updateTiltSurface}
-            onPointerLeave={reduceMotion ? undefined : resetTiltSurface}
-          >
-            <div
-              className="article-cover-card__cover"
-              style={{ backgroundImage: `url(${article.coverImageUrl})` }}
-            />
-            <div className="article-cover-card__shade" />
-            <div className="article-cover-card__content">
-              <div className="article-cover-card__meta">
-                <span>{formatDate(article.publishedAt)}</span>
-                <span>{article.readTime} 分钟</span>
-                <span>{article.views} 浏览</span>
-                <span>{article.likes} 喜欢</span>
-              </div>
-              {article.previewOnly ? (
-                <h3>{article.title}</h3>
-              ) : (
+      {filteredArticles.length > 0 ? (
+        <div className="article-grid">
+          {filteredArticles.map((article) => (
+            <motion.article
+              key={article.title}
+              className="article-cover-card glass-panel"
+              transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+              onPointerMove={reduceMotion ? undefined : updateTiltSurface}
+              onPointerLeave={reduceMotion ? undefined : resetTiltSurface}
+            >
+              <div
+                className="article-cover-card__cover"
+                style={{ backgroundImage: `url(${article.coverImageUrl})` }}
+              />
+              <div className="article-cover-card__shade" />
+              <div className="article-cover-card__content">
+                <div className="article-cover-card__meta">
+                  <span>{formatDate(article.publishedAt)}</span>
+                  <span>{article.readTime} 分钟</span>
+                  <span>{article.views} 浏览</span>
+                  <span>{article.likes} 喜欢</span>
+                </div>
                 <Link to={`/post/${article.slug}`}>
                   <h3>{article.title}</h3>
                 </Link>
-              )}
-            </div>
-          </motion.article>
-        ))}
-      </div>
+              </div>
+            </motion.article>
+          ))}
+        </div>
+      ) : (
+        <article className="glass-panel empty-state empty-state--large">
+          <strong>文章区暂时空着</strong>
+          <p>占位文章已经删除。你把自己的 Markdown 发到仓库后，这里会自动生成列表和详情页。</p>
+          <Link className="action-button action-button--primary" to="/publish">
+            去看发布方式
+          </Link>
+        </article>
+      )}
     </section>
   )
 }
@@ -1397,15 +1394,17 @@ function PublishGuidePage() {
 
 function ArticlePage() {
   const { slug } = useParams()
-  const post = posts.find((item) => item.slug === slug)
+  const articleFeed = buildArticleFeed()
+  const post = articleFeed.find((item) => item.slug === slug)
 
   if (!post) {
     return <NotFoundPage />
   }
 
   const headings = extractHeadings(post.content)
-  const { previousPost, nextPost } = getAdjacentPosts(posts, post.slug)
+  const { previousPost, nextPost } = getAdjacentPosts(articleFeed, post.slug)
   const createHeadingId = createHeadingIdFactory()
+  const readingMinutes = post.readTime || estimateReadingMinutes(post.content)
 
   return (
     <section className="page-board">
@@ -1413,7 +1412,7 @@ function ArticlePage() {
         <div className="article-detail__meta">
           <span>{formatDate(post.publishedAt)}</span>
           <span>{post.category}</span>
-          <span>{estimateReadingMinutes(post.content)} 分钟阅读</span>
+          <span>{readingMinutes} 分钟阅读</span>
         </div>
         <h1 className="article-detail__title">{post.title}</h1>
         <p className="article-detail__excerpt">{post.excerpt}</p>
@@ -1640,35 +1639,117 @@ function PageHeading({ title, subtitle, eyebrow = '云朵分区' }) {
 
 function MusicPlayerCard({ expanded = false }) {
   const reduceMotion = useReducedMotion()
+  const audioRef = useRef(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [trackIndex, setTrackIndex] = useState(0)
-  const [progress, setProgress] = useState(0.26)
+  const [progress, setProgress] = useState(0)
+  const [playbackError, setPlaybackError] = useState('')
   const track = playlist[trackIndex]
 
   useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) {
+      return undefined
+    }
+
+    function syncProgress() {
+      setProgress(audio.duration > 0 ? audio.currentTime / audio.duration : 0)
+    }
+
+    function handleEnded() {
+      setIsPlaying(false)
+      setProgress(0)
+    }
+
+    function handlePlay() {
+      setIsPlaying(true)
+      setPlaybackError('')
+    }
+
+    function handlePause() {
+      setIsPlaying(false)
+    }
+
+    function handleError() {
+      setPlaybackError('这首歌暂时没有加载出来，请再点一次播放。')
+      setIsPlaying(false)
+    }
+
+    syncProgress()
+    audio.addEventListener('timeupdate', syncProgress)
+    audio.addEventListener('loadedmetadata', syncProgress)
+    audio.addEventListener('play', handlePlay)
+    audio.addEventListener('pause', handlePause)
+    audio.addEventListener('ended', handleEnded)
+    audio.addEventListener('error', handleError)
+
+    return () => {
+      audio.removeEventListener('timeupdate', syncProgress)
+      audio.removeEventListener('loadedmetadata', syncProgress)
+      audio.removeEventListener('play', handlePlay)
+      audio.removeEventListener('pause', handlePause)
+      audio.removeEventListener('ended', handleEnded)
+      audio.removeEventListener('error', handleError)
+    }
+  }, [track.src])
+
+  useEffect(() => {
+    const audio = audioRef.current
+    if (!audio) {
+      return undefined
+    }
+
+    setProgress(0)
+    setPlaybackError('')
+
     if (!isPlaying) {
       return undefined
     }
 
-    const timer = window.setInterval(() => {
-      setProgress((currentProgress) => {
-        if (currentProgress >= 0.98) {
-          return 0.14
-        }
-        return currentProgress + 0.01
-      })
-    }, reduceMotion ? 800 : 420)
+    async function startPlayback() {
+      try {
+        await audio.play()
+      } catch {
+        setPlaybackError('浏览器拦截了这次播放，请再点一次播放按钮。')
+        setIsPlaying(false)
+      }
+    }
 
-    return () => window.clearInterval(timer)
-  }, [isPlaying, reduceMotion])
+    if (audio.readyState >= 2) {
+      void startPlayback()
+      return undefined
+    }
 
-  function toggleTrack() {
-    setIsPlaying((playing) => !playing)
+    audio.addEventListener('canplay', startPlayback, { once: true })
+    return () => {
+      audio.removeEventListener('canplay', startPlayback)
+    }
+  }, [track.src, isPlaying])
+
+  async function toggleTrack() {
+    const audio = audioRef.current
+    if (!audio) {
+      return
+    }
+
+    if (!audio.paused) {
+      audio.pause()
+      return
+    }
+
+    setPlaybackError('')
+
+    try {
+      await audio.play()
+    } catch {
+      setPlaybackError('浏览器拦截了这次播放，请再点一次播放按钮。')
+      setIsPlaying(false)
+    }
   }
 
   function nextTrack() {
     setTrackIndex((index) => (index + 1) % playlist.length)
-    setProgress(0.12)
+    setProgress(0)
   }
 
   return (
@@ -1688,6 +1769,12 @@ function MusicPlayerCard({ expanded = false }) {
       </div>
 
       <div className="music-card__body">
+        <audio
+          key={track.src}
+          ref={audioRef}
+          preload="metadata"
+          src={track.src}
+        />
         <div
           className="music-card__cover"
           style={{ backgroundImage: `url(${track.cover})` }}
@@ -1699,7 +1786,7 @@ function MusicPlayerCard({ expanded = false }) {
             <span style={{ width: `${progress * 100}%` }} />
           </div>
           <div className="music-card__controls">
-            <button type="button" onClick={toggleTrack}>
+            <button type="button" onClick={() => void toggleTrack()}>
               {isPlaying ? (
                 <PauseCircle size={34} weight="duotone" />
               ) : (
@@ -1711,11 +1798,14 @@ function MusicPlayerCard({ expanded = false }) {
               <span>{isPlaying ? '夜里抱着零食偷偷听歌' : '按下播放，开始发呆'}</span>
             </div>
           </div>
+          {playbackError && (
+            <p className="music-card__error">{playbackError}</p>
+          )}
         </div>
       </div>
 
       <div className="music-card__lyrics">
-        “今天的风很软，适合在代码和午睡之间慢慢听完这一首歌。”
+        “{track.lyric}”
       </div>
     </motion.article>
   )

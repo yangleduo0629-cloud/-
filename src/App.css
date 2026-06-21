@@ -716,6 +716,13 @@
   font-size: 0.92rem;
 }
 
+.music-card__error {
+  margin: 12px 0 0;
+  color: #d96b7a;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
 .music-card__lyrics {
   min-height: 44px;
   justify-content: center;
@@ -752,12 +759,38 @@
   background: rgba(255, 255, 255, 0.18);
 }
 
+.articles-preview-panel__item-link {
+  display: grid;
+  text-decoration: none;
+}
+
 .articles-preview-panel__meta {
   display: flex;
   gap: 8px 12px;
   flex-wrap: wrap;
   color: var(--muted);
   font-size: 0.84rem;
+}
+
+.empty-state {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding: 20px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--heading);
+}
+
+.empty-state p {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.75;
+}
+
+.empty-state--large {
+  min-height: 240px;
+  place-content: center;
 }
 
 .moments-preview-panel__cards {
