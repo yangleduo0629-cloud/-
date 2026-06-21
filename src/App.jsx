@@ -186,8 +186,18 @@ const projectEntries = [
 ]
 
 const friendEntries = [
-  { name: '云朵同桌', desc: '以后会把喜欢的博客和朋友站点慢慢挂上来。' },
-  { name: '草地搭子', desc: '如果你也在认真写博客，这里会预留一个温柔的位置。' },
+  {
+    name: '摁湿chen7chen',
+    url: 'https://heliumsenbrg.github.io/ctf-writeup-blog/',
+    site: 'heliumsenbrg.github.io/ctf-writeup-blog',
+    desc: 'MISSION_BRIEFING，专注 CTF WriteUp 和 Web Security Writeups。',
+  },
+  {
+    name: '草地搭子',
+    url: '',
+    site: '比如 https://example.com',
+    desc: '如果你也在认真写博客，这里会预留一个温柔的位置。',
+  },
 ]
 
 const playlist = [
@@ -223,6 +233,22 @@ function getGreeting() {
     return '今天也适合慢慢发呆'
   }
   return '夜里抱着零食偷偷听歌'
+}
+
+function formatFriendSite(friend) {
+  if (friend.site) {
+    return friend.site
+  }
+
+  if (!friend.url) {
+    return '待填写链接'
+  }
+
+  try {
+    return new URL(friend.url).hostname.replace(/^www\./i, '')
+  } catch {
+    return friend.url
+  }
 }
 
 function getTextContent(children) {
@@ -1132,18 +1158,48 @@ function FriendsPage() {
     <section className="page-board">
       <PageHeading title="友链" subtitle="以后会把温柔又认真写博客的人挂在这里" />
       <div className="friend-grid">
-        {friendEntries.map((friend) => (
-          <motion.article
-            key={friend.name}
-            className="glass-panel friend-card"
-            whileHover={{ y: -6, scale: 1.01 }}
-            transition={{ type: 'spring', stiffness: 220, damping: 18 }}
-          >
-            <Handshake size={22} weight="duotone" />
-            <strong>{friend.name}</strong>
-            <p>{friend.desc}</p>
-          </motion.article>
-        ))}
+        {friendEntries.map((friend) => {
+          const cardContent = (
+            <>
+              <div className="friend-card__badge">
+                <Handshake size={22} weight="duotone" />
+                <span>{formatFriendSite(friend)}</span>
+              </div>
+              <strong>{friend.name}</strong>
+              <p>{friend.desc}</p>
+              <span className="friend-card__hint">
+                {friend.url ? '点击访问' : '把 url 填上后这里就能点开'}
+              </span>
+            </>
+          )
+
+          if (friend.url) {
+            return (
+              <motion.a
+                key={friend.name}
+                className="glass-panel friend-card friend-card--link"
+                href={friend.url}
+                rel="noreferrer"
+                target="_blank"
+                whileHover={{ y: -6, scale: 1.01 }}
+                transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+              >
+                {cardContent}
+              </motion.a>
+            )
+          }
+
+          return (
+            <motion.article
+              key={friend.name}
+              className="glass-panel friend-card"
+              whileHover={{ y: -6, scale: 1.01 }}
+              transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+            >
+              {cardContent}
+            </motion.article>
+          )
+        })}
       </div>
     </section>
   )
