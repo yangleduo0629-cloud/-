@@ -22,6 +22,8 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import {
   Children,
   isValidElement,
+  startTransition,
+  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -70,6 +72,7 @@ import {
   playlist,
   projectEntries,
 } from './content/site-data'
+import { siteMeta } from './content/site-meta'
 import {
   createHeadingIdFactory,
   estimateReadingMinutes,
@@ -138,6 +141,107 @@ function buildArticleFeed() {
     likes: 18 + index * 7,
     readTime: estimateReadingMinutes(post.content),
   }))
+}
+
+const contentExportLinks = [
+  {
+    label: 'RSS 订阅',
+    href: new URL('feed.xml', siteMeta.siteUrl).toString(),
+    desc: '适合订阅器抓取最新文章更新。',
+  },
+  {
+    label: '站点地图',
+    href: new URL('sitemap.xml', siteMeta.siteUrl).toString(),
+    desc: '方便搜索引擎和爬虫发现页面结构。',
+  },
+  {
+    label: '内容索引',
+    href: new URL('content-index.json', siteMeta.siteUrl).toString(),
+    desc: '供脚本、搜索或二次整理读取文章摘要。',
+  },
+]
+
+const publicGuestbookConfig = {
+  repo: 'yangleduo0629-cloud/-',
+  issueTerm: 'lazy-goat-guestbook',
+  label: 'guestbook',
+  repoUrl: 'https://github.com/yangleduo0629-cloud/-',
+}
+
+function articleMatchesKeyword(article, keyword) {
+  if (!keyword) {
+    return true
+  }
+
+  const searchPool = [
+    article.title,
+    article.excerpt,
+    article.category,
+    article.series,
+    article.tags.join(' '),
+    article.content,
+  ]
+    .filter(Boolean)
+    .join('\n')
+    .toLowerCase()
+
+  return searchPool.includes(keyword)
+}
+
+function resolveCommentTheme() {
+  if (typeof document === 'undefined') {
+    return 'github-light'
+  }
+
+  return document.documentElement.dataset.theme === 'dark'
+    ? 'github-dark'
+    : 'github-light'
+}
+
+function PublicGuestbookWall() {
+  const containerRef = useRef(null)
+  const [commentTheme, setCommentTheme] = useState(resolveCommentTheme)
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return undefined
+    }
+
+    const observer = new MutationObserver(() => {
+      setCommentTheme(resolveCommentTheme())
+    })
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    })
+
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) {
+      return undefined
+    }
+
+    container.innerHTML = ''
+    const script = document.createElement('script')
+    script.src = 'https://utteranc.es/client.js'
+    script.async = true
+    script.crossOrigin = 'anonymous'
+    script.setAttribute('repo', publicGuestbookConfig.repo)
+    script.setAttribute('issue-term', publicGuestbookConfig.issueTerm)
+    script.setAttribute('label', publicGuestbookConfig.label)
+    script.setAttribute('theme', commentTheme)
+    container.appendChild(script)
+
+    return () => {
+      container.innerHTML = ''
+    }
+  }, [commentTheme])
+
+  return <div className="guestbook-comment-wall" ref={containerRef} />
 }
 
 function readStoredTheme() {
@@ -826,25 +930,68 @@ function ArticlesPage() {
   const activeTag = searchParams.get('tag') || '全部'
   const activeYear = searchParams.get('year') || '全部'
   const activeSeries = searchParams.get('series') || '全部'
-  const filteredArticles = articleFeed.filter((article) => {
-    const matchesCategory = activeCategory === '全部' || article.category === activeCategory
-    const matchesTag = activeTag === '全部' || article.tags.includes(activeTag)
-    const matchesYear =
-      activeYear === '全部' || String(article.publishedAt || '').startsWith(activeYear)
-    const matchesSeries = activeSeries === '全部' || article.series === activeSeries
+  const activeKeyword = searchParams.get('q') || ''
+  const deferredKeyword = useDeferredValue(activeKeyword.trim().toLowerCase())
+  const articleStats = useMemo(
+    () => [
+      {
+        value: articleFeed.length,
+        label: '已发布文章',
+        note: articleFeed.length > 0 ? '会同步出现在列表、归档和 RSS 里。' : '等你发出第一篇正式文章。',
+      },
+      {
+        value: tagGroups.length,
+        label: '标签数量',
+        note: '适合把专题和知识点慢慢拆细。',
+      },
+      {
+        value: seriesGroups.length,
+        label: '系列分组',
+        note: '长线更新的内容可以集中整理。',
+      },
+      {
+        value: yearGroups.length,
+        label: '年份索引',
+        note: '归档页会按年份自动接入内容。',
+      },
+    ],
+    [articleFeed.length],
+  )
+  const filteredArticles = useMemo(
+    () =>
+      articleFeed.filter((article) => {
+        const matchesCategory = activeCategory === '全部' || article.category === activeCategory
+        const matchesTag = activeTag === '全部' || article.tags.includes(activeTag)
+        const matchesYear =
+          activeYear === '全部' || String(article.publishedAt || '').startsWith(activeYear)
+        const matchesSeries = activeSeries === '全部' || article.series === activeSeries
+        const matchesKeyword = articleMatchesKeyword(article, deferredKeyword)
 
-    return matchesCategory && matchesTag && matchesYear && matchesSeries
-  })
+        return matchesCategory && matchesTag && matchesYear && matchesSeries && matchesKeyword
+      }),
+    [activeCategory, activeTag, activeYear, activeSeries, articleFeed, deferredKeyword],
+  )
   const reduceMotion = useReducedMotion()
+  const hasFilters =
+    activeCategory !== '全部' ||
+    activeTag !== '全部' ||
+    activeYear !== '全部' ||
+    activeSeries !== '全部' ||
+    activeKeyword.trim() !== ''
 
   function updateArticleFilter(key, value) {
     const nextParams = new URLSearchParams(searchParams)
-    if (value === '全部') {
+    const normalizedValue = String(value)
+    if (normalizedValue === '全部' || normalizedValue.trim() === '') {
       nextParams.delete(key)
     } else {
-      nextParams.set(key, value)
+      nextParams.set(key, normalizedValue)
     }
     setSearchParams(nextParams, { replace: true })
+  }
+
+  function resetArticleFilters() {
+    setSearchParams(new URLSearchParams(), { replace: true })
   }
 
   return (
@@ -853,6 +1000,78 @@ function ArticlesPage() {
         title="文章"
         subtitle="记录技术、生活和偷懒时刻"
       />
+      <article className="glass-panel articles-search-panel">
+        <div className="panel-headline">
+          <div>
+            <p className="soft-eyebrow">内容检索</p>
+            <h3>按关键词翻找小窝里的文章</h3>
+          </div>
+          {hasFilters && (
+            <button
+              className="action-button action-button--secondary"
+              type="button"
+              onClick={resetArticleFilters}
+            >
+              清空筛选
+            </button>
+          )}
+        </div>
+        <label className="articles-search-bar">
+          <MagnifyingGlass size={20} weight="bold" />
+          <input
+            type="search"
+            value={activeKeyword}
+            placeholder="搜索标题、摘要、标签、系列或正文片段..."
+            onChange={(event) => {
+              const nextKeyword = event.target.value
+              startTransition(() => {
+                updateArticleFilter('q', nextKeyword)
+              })
+            }}
+          />
+        </label>
+        <p className="articles-search-panel__hint">
+          {activeKeyword.trim()
+            ? `当前显示 ${filteredArticles.length} 篇结果，会同时匹配标题、摘要、标签、系列和正文。`
+            : '支持直接搜索标题、摘要、标签、系列名，也能查正文里的关键词。'}
+        </p>
+      </article>
+      <div className="content-overview-grid">
+        <article className="glass-panel taxonomy-panel">
+          <p className="soft-eyebrow">内容总览</p>
+          <h3>文章系统的整理进度</h3>
+          <div className="overview-stats">
+            {articleStats.map((stat) => (
+              <div className="overview-stat" key={stat.label}>
+                <span>{stat.label}</span>
+                <strong>{String(stat.value).padStart(2, '0')}</strong>
+                <p>{stat.note}</p>
+              </div>
+            ))}
+          </div>
+        </article>
+        <article className="glass-panel taxonomy-panel export-panel">
+          <p className="soft-eyebrow">订阅导出</p>
+          <h3>把内容同步给外部世界</h3>
+          <div className="export-link-list">
+            {contentExportLinks.map((item) => (
+              <a
+                className="export-link"
+                href={item.href}
+                key={item.label}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <div>
+                  <strong>{item.label}</strong>
+                  <p>{item.desc}</p>
+                </div>
+                <span>打开</span>
+              </a>
+            ))}
+          </div>
+        </article>
+      </div>
       <div className="pill-row">
         {realCategories.map((category) => (
           <button
@@ -972,6 +1191,18 @@ function ArticlesPage() {
             </motion.article>
           ))}
         </div>
+      ) : articleFeed.length > 0 ? (
+        <article className="glass-panel empty-state empty-state--large">
+          <strong>暂时没有匹配的文章</strong>
+          <p>可以换个关键词试试，或者把分类、标签、年份和系列筛选清空后再看看。</p>
+          <button
+            className="action-button action-button--secondary"
+            type="button"
+            onClick={resetArticleFilters}
+          >
+            重置筛选
+          </button>
+        </article>
       ) : (
         <article className="glass-panel empty-state empty-state--large">
           <strong>文章区暂时空着</strong>
@@ -1095,6 +1326,30 @@ function GuestbookPage() {
   return (
     <section className="page-board">
       <PageHeading title="留言" subtitle="像云朵便签一样的来访留言板" />
+      <motion.article
+        className="glass-panel guestbook-wall-panel"
+        whileHover={{ y: -4 }}
+        transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+      >
+        <div className="panel-headline">
+          <div>
+            <p className="soft-eyebrow">公开留言墙</p>
+            <h3>访客可以直接在这里留下公开留言</h3>
+          </div>
+          <a href={publicGuestbookConfig.repoUrl} rel="noreferrer" target="_blank">
+            查看仓库
+          </a>
+        </div>
+        <p className="guestbook-wall-panel__lead">
+          这里接入了适合 GitHub Pages 的公开评论墙。访客用 GitHub 登录后，就能直接留言、回复和继续讨论。
+        </p>
+        <div className="favorite-cloud guestbook-wall-panel__chips">
+          <span>公开展示</span>
+          <span>支持回复</span>
+          <span>适合长期交流</span>
+        </div>
+        <PublicGuestbookWall />
+      </motion.article>
       <div className="guestbook-grid">
         <motion.article
           className="glass-panel guestbook-form-panel"
@@ -1103,8 +1358,8 @@ function GuestbookPage() {
         >
           <div className="panel-headline">
             <div>
-              <p className="soft-eyebrow">自由留言</p>
-              <h3>给小窝留一句话</h3>
+              <p className="soft-eyebrow">悄悄留言</p>
+              <h3>也可以私下发一封小纸条</h3>
             </div>
           </div>
 
@@ -1548,6 +1803,33 @@ function PublishGuidePage() {
         <div className="favorite-cloud publish-panel__chips">
           {publishChecklist.map((item) => (
             <span key={item}>{item}</span>
+          ))}
+        </div>
+      </article>
+
+      <article className="glass-panel publish-panel">
+        <div className="panel-headline">
+          <div>
+            <p className="soft-eyebrow">订阅与导出</p>
+            <h3>构建后会自动更新这些公开文件</h3>
+          </div>
+          <span className="hero-panel__badge">当前公开文章 {posts.length} 篇</span>
+        </div>
+        <div className="export-link-list">
+          {contentExportLinks.map((item) => (
+            <a
+              className="export-link"
+              href={item.href}
+              key={item.label}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <div>
+                <strong>{item.label}</strong>
+                <p>{item.desc}</p>
+              </div>
+              <span>查看</span>
+            </a>
           ))}
         </div>
       </article>
