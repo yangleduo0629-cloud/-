@@ -15,6 +15,7 @@ import {
 import dreamBgDay from '../assets/dream-bg-day.webp'
 import dreamBgSunset from '../assets/dream-bg-sunset.webp'
 import lazyGoat from '../assets/lazy-goat.jpg'
+import polarctfHonorCertificate from '../assets/polarctf-honor-certificate.png'
 import everybodyHappyGoat from '../assets/everybody-happy-goat.mp3'
 import littleJumpFrog from '../assets/little-jump-frog.mp3'
 import stillAliveJerk from '../assets/still-alive-jerk.mp3'
@@ -93,6 +94,13 @@ export const albumCollections = [
     caption: '适合用来收藏那些看一眼就会变得柔软的画面。',
     stack: [lazyGoat, dreamBgDay, dreamBgSunset],
     images: [lazyGoat, dreamBgDay, dreamBgSunset, lazyGoat],
+  },
+  {
+    title: '荣誉证书',
+    count: 1,
+    caption: '把最近拿到的 PolarCTF 一等奖证书也认真收进照片墙里。',
+    stack: [polarctfHonorCertificate, dreamBgDay, lazyGoat],
+    images: [polarctfHonorCertificate],
   },
 ]
 
